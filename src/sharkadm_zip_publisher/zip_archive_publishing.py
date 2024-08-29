@@ -420,11 +420,11 @@ class ZipArchivePublisherGUI:
         self._sharkdata_dataset_directory.update()
 
 
-def start_app():
+def run_app():
     app = ZipArchivePublisherGUI()
     return app
 
 
 if __name__ == '__main__':
-    app = start_app()
+    app = run_app()
 

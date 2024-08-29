@@ -1,1 +1,1 @@
-from .zip_archive_publishing import start_app
+from .zip_archive_publishing import run_app
