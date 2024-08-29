@@ -1,0 +1,28 @@
+[project]
+name = "sharkadm-zip-publisher"
+version = "0.2.0"
+description = "Python application to modify/enrich and publish Data host zip packages"
+authors = [
+    {name = "Magnus Wenzer", email = "magnus.wenzer@smhi.se"},
+]
+dependencies = [
+    "flet>=0.21.2",
+    "sharkadm @ git+https://github.com/nodc-sweden/SHARKadm.git@v0.1.0",
+    "nodc-codes @ git+https://github.com/nodc-sweden/nodc-codes.git@v0.1.1",
+]
+requires-python = "<3.14,>=3.11"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+
+[tool.pdm]
+distribution = true
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "pyinstaller>=6.10.0",
+]
