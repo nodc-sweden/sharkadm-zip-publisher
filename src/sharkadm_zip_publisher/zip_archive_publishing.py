@@ -35,22 +35,33 @@ class ImportNotAvailable(Exception):
 
 class ZipArchivePublishing:
 
-    def __init__(self):
+    def __init__(self,
+                 sharkdata_dataset_directory=None,
+                 trigger_url=None,
+                 import_url=None
+                 ):
+        self._config = dict(
+            sharkdata_dataset_directory=sharkdata_dataset_directory,
+            url_trigger_import=trigger_url,
+            url_import_status=import_url
+        )
+        if not all(list(self._config.values())):
+            raise Exception('Missing input parameters!')
+
         self._zip_archive_paths: list[pathlib.Path] = []
         self._transformers: list[transformers.Transformer] = []
         self._updated_zip_archive_paths: list[pathlib.Path] = []
-        self._config = {}
 
         self._controller = controller.SHARKadmController()
 
-        self._load_config()
+        # self._load_config()
         self._create_transformers()
 
-    def _load_config(self):
-        if not CONFIG_PATH.exists():
-            raise FileNotFoundError(CONFIG_PATH)
-        with open(CONFIG_PATH) as fid:
-            self._config = yaml.safe_load(fid)
+    # def _load_config(self):
+    #     if not CONFIG_PATH.exists():
+    #         raise FileNotFoundError(CONFIG_PATH)
+    #     with open(CONFIG_PATH) as fid:
+    #         self._config = yaml.safe_load(fid)
 
     @property
     def zip_archive_paths(self):
@@ -159,7 +170,7 @@ class ZipPath(ft.UserControl):
 
 class ZipArchivePublisherGUI:
     def __init__(self):
-        self._publisher = ZipArchivePublishing()
+
         self.page = None
         self._zip_paths = set()
 
@@ -199,8 +210,8 @@ class ZipArchivePublisherGUI:
 
         self._zip_paths_column = ft.Column(tight=True)
         self._option_update_zip_archives = ft.Checkbox(label='Uppdatera zip-paket', tooltip='Uppdaterar zip-peketen med _sv-columner. Uppdaterade paket skriver INTE över befintliga.')
-        self._option_copy_zip_archives_to_sharkdata = ft.Checkbox(label='Kopiera zip-paket till "datasets"', tooltip=f'Kopierar zip-paketen till {self._publisher.sharkdata_dataset_directory}')
-        self._option_trigger_import = ft.Checkbox(label='Importera zip-paketen', tooltip=f'Triggar APIet ({self._publisher.url_trigger_import}) \nså att arkiven som ligger i dataset-mappen importeras till sharkdata')
+        self._option_copy_zip_archives_to_sharkdata = ft.Checkbox(label='Kopiera zip-paket till "datasets"')
+        self._option_trigger_import = ft.Checkbox(label='Importera zip-paketen')
         options_column = ft.Column([
             self._option_update_zip_archives,
             self._option_copy_zip_archives_to_sharkdata,
@@ -212,6 +223,8 @@ class ZipArchivePublisherGUI:
                                          content=options_column)
         self._go_button = ft.ElevatedButton(text='Kör', on_click=self._run)
         col = ft.Column([
+            self._get_select_sharkdata_dataset_directory_row(),
+            self._get_pick_url_trigger_row(),
             self._get_pick_zip_files_files_button(),
             container_paths,
             container_options,
@@ -239,25 +252,38 @@ class ZipArchivePublisherGUI:
             self._dialog_text.value = 'Inga zip-arkiv valda!'
             self._open_dlg()
             return
+        if self._option_trigger_import.value and not all([self._trigger_url.value.strip(), self._status_url.value.strip()]):
+            self._dialog_text.value = 'Du måste fylla i fälten för URL!'
+            self._open_dlg()
+            return
         self._disable_buttons()
+
+        self._export_saves()
+
+        publisher = ZipArchivePublishing(
+            sharkdata_dataset_directory=self._sharkdata_dataset_directory.value,
+            trigger_url=self._trigger_url.value,
+            import_url=self._status_url.value
+        )
+
         for path in self._zip_paths:
-            self._publisher.set_zip_archive_paths(path)
+            publisher.set_zip_archive_paths(path)
             if self._option_update_zip_archives.value:
                 self._dialog_text.value = f'Uppdaterar {path}...'
                 self._open_dlg()
-                self._publisher.update_zip_archives()
+                publisher.update_zip_archives()
             if self._option_copy_zip_archives_to_sharkdata.value:
                 self._dialog_text.value = f'Kopierar {path}...'
                 self._open_dlg()
-                self._publisher.copy_archives_to_sharkdata()
+                publisher.copy_archives_to_sharkdata()
         if self._option_trigger_import.value:
             self._dialog_text.value = f'Triggar import...'
             self._open_dlg()
-            self._publisher.trigger_import()
+            publisher.trigger_import()
             time.sleep(1)
         self._dialog_text.value = f'Allt klart!'
         self._open_dlg()
-        self._export_saves()
+        # self._export_saves()
         self._enable_buttons()
 
     def _enable_buttons(self):
@@ -274,6 +300,9 @@ class ZipArchivePublisherGUI:
         self._saves['_option_update_zip_archives'] = self._option_update_zip_archives
         self._saves['_option_copy_zip_archives_to_sharkdata'] = self._option_copy_zip_archives_to_sharkdata
         self._saves['_option_trigger_import'] = self._option_trigger_import
+        self._saves['_sharkdata_dataset_directory'] = self._sharkdata_dataset_directory
+        self._saves['_trigger_url'] = self._trigger_url
+        self._saves['_status_url'] = self._status_url
 
     def _export_saves(self):
         data = {}
@@ -316,6 +345,65 @@ class ZipArchivePublisherGUI:
             )
         return row
 
+    def _get_select_sharkdata_dataset_directory_row(self) -> ft.Row:
+
+        self._sharkdata_dataset_directory = ft.Text()
+
+        pick_sharkdata_dataset_directory_dialog = ft.FilePicker(on_result=self.on_select_sharkdata_import_directory)
+
+        self.page.overlay.append(pick_sharkdata_dataset_directory_dialog)
+        self._pick_sharkdata_dataset_directory_button = ft.ElevatedButton(
+                        "Välj mapp där du vill lägga zip-paketen",
+                        icon=ft.icons.UPLOAD_FILE,
+                        on_click=lambda _: pick_sharkdata_dataset_directory_dialog.get_directory_path(
+                            dialog_title='Välj mapp där du vill lägga zip-paketen',
+                            initial_directory=self._sharkdata_dataset_directory.value
+                        ))
+
+        row = ft.Row(
+                [
+                    self._pick_sharkdata_dataset_directory_button,
+                    self._sharkdata_dataset_directory
+                ]
+            )
+        return row
+
+    def _get_pick_url_trigger_row(self) -> ft.Row:
+        self._trigger_url = ft.TextField(multiline=False, label='URL som triggar importen', width=600, on_blur=self._on_change_trigger_url)
+        self._status_url = ft.TextField(multiline=False, label='URL som kollar status på importen',
+                                        tooltip='Den här sätts automatiskt om trigger-url säts', width=600, on_blur=self._on_change_status_url)
+
+        row = ft.Row([ft.Column(
+                [
+                    self._trigger_url,
+                    self._status_url
+                ]
+            )])
+        return row
+
+    @staticmethod
+    def _fix_url_str(url: str) -> str:
+        prefix = 'https://'
+        url = url.strip().replace('\\', '/').strip('/')
+        if not url:
+            return ''
+        if not url.startswith(prefix):
+            url = prefix + url
+        return url
+
+    def _on_change_trigger_url(self, event=None):
+        trigger_url = self._fix_url_str(self._trigger_url.value)
+        self._trigger_url.value = trigger_url
+        self._trigger_url.update()
+
+        self._status_url.value = trigger_url + '/status'
+        self._status_url.update()
+
+    def _on_change_status_url(self, event=None):
+        status_url = self._fix_url_str(self._status_url.value)
+        self._status_url.value = status_url
+        self._status_url.update()
+
     def _on_pick_zip_files(self, e: ft.FilePickerResultEvent) -> None:
         if not e.files:
             return
@@ -324,6 +412,12 @@ class ZipArchivePublisherGUI:
         controls = [ZipPath(path, on_delete=self._delete_path) for path in sorted(self._zip_paths)]
         self._zip_paths_column.controls = controls
         self.update_page()
+
+    def on_select_sharkdata_import_directory(self, e: ft.FilePickerResultEvent) -> None:
+        if not e.path:
+            return
+        self._sharkdata_dataset_directory.value = e.path
+        self._sharkdata_dataset_directory.update()
 
 
 def start_app():
