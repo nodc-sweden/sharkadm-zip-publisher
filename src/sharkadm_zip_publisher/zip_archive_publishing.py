@@ -326,11 +326,11 @@ class ZipArchivePublisherGUI:
         self.update_page()
 
 
-def start_gui():
+def start_app():
     app = ZipArchivePublisherGUI()
     return app
 
 
 if __name__ == '__main__':
-    app = start_gui()
+    app = start_app()
 

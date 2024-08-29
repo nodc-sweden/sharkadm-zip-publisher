@@ -1,1 +1,1 @@
-from .zip_archive_publishing import start_gui
+from .zip_archive_publishing import start_app
