@@ -1,32 +1,22 @@
 import pathlib
 import shutil
-import sys
 import time
 
 import flet as ft
 import requests
 import yaml
-
+from sharkadm import adm_logger
 from sharkadm import controller
+from sharkadm import event
 from sharkadm import exporters
 from sharkadm import transformers
 from sharkadm import utils
 from sharkadm.data import get_zip_archive_data_holder
-from sharkadm import event
-from sharkadm import adm_logger
 
 
-if getattr(sys, 'frozen', False):
-    ROOT_DIR = pathlib.Path(sys.executable).parent
-else:
-    ROOT_DIR = pathlib.Path(__file__).parent
-
-CONFIG_DIR = pathlib.Path(ROOT_DIR, 'CONFIG_FILES').resolve()
-
-SAVES_PATH = pathlib.Path(ROOT_DIR, 'zip_archive_publishing_saves.yaml').resolve()
-CONFIG_PATH = CONFIG_DIR / 'zip_archive_publishing_config.yaml'
-if not CONFIG_PATH.exists():
-    CONFIG_PATH = CONFIG_DIR / 'config.yaml'
+USER_DIR = utils.get_root_directory() / 'zip_archive_publisher'
+USER_DIR.mkdir(parents=True, exist_ok=True)
+SAVES_PATH = pathlib.Path(USER_DIR, 'zip_archive_publisher_saves.yaml').resolve()
 
 
 class ImportNotAvailable(Exception):
@@ -54,14 +44,8 @@ class ZipArchivePublishing:
 
         self._controller = controller.SHARKadmController()
 
-        # self._load_config()
         self._create_transformers()
 
-    # def _load_config(self):
-    #     if not CONFIG_PATH.exists():
-    #         raise FileNotFoundError(CONFIG_PATH)
-    #     with open(CONFIG_PATH) as fid:
-    #         self._config = yaml.safe_load(fid)
 
     @property
     def zip_archive_paths(self):
@@ -208,7 +192,7 @@ class ZipArchivePublisherGUI:
             title=self._dialog_text
         )
 
-        self._zip_paths_column = ft.Column(tight=True)
+        self._zip_paths_column = ft.Column(tight=True, scroll=ft.ScrollMode.ALWAYS)
         self._option_update_zip_archives = ft.Checkbox(label='Uppdatera zip-paket', tooltip='Uppdaterar zip-peketen med _sv-columner. Uppdaterade paket skriver INTE över befintliga.')
         self._option_copy_zip_archives_to_sharkdata = ft.Checkbox(label='Kopiera zip-paket till "datasets"')
         self._option_trigger_import = ft.Checkbox(label='Importera zip-paketen')
@@ -218,10 +202,11 @@ class ZipArchivePublisherGUI:
             self._option_trigger_import
         ])
         container_paths = ft.Container(bgcolor='#82b2ff',
-                                       content=self._zip_paths_column)
+                                       content=self._zip_paths_column,
+                                       expand=True)
         container_options = ft.Container(bgcolor='#a1c995',
                                          content=options_column)
-        self._go_button = ft.ElevatedButton(text='Kör', on_click=self._run)
+        self._go_button = ft.ElevatedButton(text='Kör', on_click=self._run, bgcolor='green')
         col = ft.Column([
             self._get_select_sharkdata_dataset_directory_row(),
             self._get_pick_url_trigger_row(),
@@ -229,7 +214,7 @@ class ZipArchivePublisherGUI:
             container_paths,
             container_options,
             self._go_button
-        ])
+        ], expand=True)
 
         self.page.controls.append(col)
         self.update_page()
@@ -259,6 +244,8 @@ class ZipArchivePublisherGUI:
         self._disable_buttons()
 
         self._export_saves()
+
+        utils.clear_temp_directory()
 
         publisher = ZipArchivePublishing(
             sharkdata_dataset_directory=self._sharkdata_dataset_directory.value,
@@ -313,6 +300,7 @@ class ZipArchivePublisherGUI:
 
     def _import_saves(self):
         if not SAVES_PATH.exists():
+            print('NO')
             return
         with open(SAVES_PATH) as fid:
             data = yaml.safe_load(fid)

@@ -7,8 +7,8 @@ authors = [
 ]
 dependencies = [
     "flet>=0.21.2",
-    "sharkadm @ git+https://github.com/nodc-sweden/SHARKadm.git@v0.1.0",
     "nodc-codes @ git+https://github.com/nodc-sweden/nodc-codes.git@v0.1.1",
+    "sharkadm @ git+https://github.com/nodc-sweden/SHARKadm.git@v0.1.5",
 ]
 requires-python = "<3.14,>=3.11"
 readme = "README.md"
