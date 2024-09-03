@@ -53,28 +53,20 @@ class ZipArchivePublishing:
 
     def update_zip_archives(self):
         self._updated_zip_archive_paths = []
-        encodings = ['latin-1', 'cp1252', 'utf8']
         for path in self._zip_archive_paths:
             data_holder = get_zip_archive_data_holder(path)
             self._controller.set_data_holder(data_holder)
             self._run_transformers()
-            exporter = None
-            for encoding in encodings:
-                try:
-                    exporter = exporters.SHARKdataTxtAsGiven(encoding=encoding,
-                                                             export_directory=data_holder.unzipped_archive_directory,
-                                                             export_file_name=data_holder.unzipped_archive_directory / 'shark_data.txt')
-                    adm_logger.log_workflow(f'Encoding is {encoding} for package {path}')
+            encoding = 'cp1252'
+            exporter = exporters.SHARKdataTxtAsGiven(encoding=encoding,
+                                                     export_directory=data_holder.unzipped_archive_directory,
+                                                     export_file_name=data_holder.unzipped_archive_directory / 'shark_data.txt')
+            adm_logger.log_workflow(f'Encoding is {encoding} for package {path}')
 
-                    self._controller.export(exporter)
-                    rezipped_archive_path = self._zip_directory(data_holder.unzipped_archive_directory)
-                    self._updated_zip_archive_paths.append(pathlib.Path(rezipped_archive_path))
-                except UnicodeEncodeError:
-                    pass
-
-            if not exporter:
-                adm_logger.log_workflow(f'Could not find any working encoding for package: {path}', level=adm_logger.WARNING)
-                continue
+            self._controller.export(exporter)
+            rezipped_archive_path = self._zip_directory(data_holder.unzipped_archive_directory)
+            self._updated_zip_archive_paths.append(pathlib.Path(rezipped_archive_path))
+            print(f'update_zip_archives: {encoding=}')
 
     def copy_archives_to_sharkdata(self):
         target_root = pathlib.Path(self._config['sharkdata_dataset_directory'])
