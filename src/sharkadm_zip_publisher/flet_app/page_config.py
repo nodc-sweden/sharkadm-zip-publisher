@@ -11,6 +11,7 @@ from sharkadm_zip_publisher.zip import ZipPath
 
 from sharkadm import utils as sharkadm_utils
 
+COLOR_DATASETS_MAIN = '#a1c995'
 COLOR_CONFIG_MAIN = '#f9c995'
 
 
@@ -39,7 +40,17 @@ class PageConfig(ft.UserControl):
         col = ft.Column([
             self._get_select_sharkdata_config_directory_row(),
             self._get_config_pick_url_trigger_row(),
-            self._get_pick_config_files_button(),
+            ft.Divider(height=9, thickness=3),
+            ft.Row([
+                self._get_pick_config_files_button(),
+                ft.IconButton(
+                    icon=ft.icons.DELETE_FOREVER_ROUNDED,
+                    icon_color=COLOR_DATASETS_MAIN,
+                    icon_size=40,
+                    tooltip="Rensa listan",
+                    on_click=self._delete_all_config_paths
+                ),
+            ]),
             container_paths,
             container_options,
             self._go_config_button
@@ -91,6 +102,11 @@ class PageConfig(ft.UserControl):
     def _delete_config_path(self, path_control: ConfigPath):
         self._config_paths_column.controls.remove(path_control)
         self._config_paths.remove(path_control.path)
+        self.update()
+
+    def _delete_all_config_paths(self, event=None):
+        self._config_paths_column.controls = []
+        self._config_paths = set()
         self.update()
 
     def _get_pick_config_files_button(self) -> ft.Row:
