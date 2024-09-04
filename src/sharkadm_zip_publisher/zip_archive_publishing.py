@@ -353,6 +353,10 @@ class ZipArchivePublisherGUI:
         self.page.controls.append(t)
         self.update_page()
 
+    def _show_dialog(self, text: str):
+        self._dialog_text.value = text
+        self._open_dlg()
+
     def _get_page_datasets(self):
         self._zip_paths_column = ft.Column(tight=True, scroll=ft.ScrollMode.ALWAYS)
         self._option_update_zip_archives = ft.Checkbox(label='Uppdatera zip-paket', tooltip='Uppdaterar zip-peketen med _sv-columner. Uppdaterade paket skriver INTE över befintliga.')
@@ -397,6 +401,7 @@ class ZipArchivePublisherGUI:
         col = ft.Column([
             self._get_select_sharkdata_remove_dataset_directory_row(),
             self._get_remove_dataset_pick_url_trigger_row(),
+            self._get_row_add_dataset_to_remove(),
             self._get_pick_remove_zip_files_button(),
             container_paths,
             container_options,
@@ -819,6 +824,22 @@ class ZipArchivePublisherGUI:
             )])
         return row
 
+    def _get_row_add_dataset_to_remove(self) -> ft.Row:
+        self._textfield_zip_to_remove = ft.TextField(label='Ange zip-paket du vill ta bort', on_submit=self._add_zip_to_remove_from_textfield)
+        btn = ft.ElevatedButton(text='Lägg till i listan',
+                                on_click=self._add_zip_to_remove_from_textfield)
+
+        return ft.Row([self._textfield_zip_to_remove, btn])
+
+    def _add_zip_to_remove_from_textfield(self, event=None):
+        value = self._textfield_zip_to_remove.value.strip()
+        if not value:
+            self._show_dialog('Inget att lägga till')
+            return
+        self._add_remove_zip_names(value)
+        self._textfield_zip_to_remove.value = ''
+        self._textfield_zip_to_remove.update()
+
     @staticmethod
     def _fix_url_str(url: str) -> str:
         prefix = 'https://'
@@ -890,10 +911,9 @@ class ZipArchivePublisherGUI:
 
     def _add_remove_zip_names(self, *names: str):
         current_controls = self._remove_zip_names_column.controls
-        self._remove_zip_names = [cont.path for cont in current_controls]
-        new_controls = [ZipPath(path, on_delete=self._delete_remove_zip_path) for path in names]
-        all_controls = current_controls + new_controls
-        self._remove_zip_names_column.controls = sorted(all_controls, key=lambda x: x.path)
+        self._remove_zip_names = sorted(set(([cont.path for cont in current_controls] + list(names))))
+        controls = [ZipPath(path, on_delete=self._delete_remove_zip_path) for path in self._remove_zip_names]
+        self._remove_zip_names_column.controls = sorted(controls, key=lambda x: x.path)
         self.update_page()
 
     def _on_pick_config_files(self, e: ft.FilePickerResultEvent) -> None:
