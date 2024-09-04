@@ -20,6 +20,7 @@ SAVES_PATH = pathlib.Path(USER_DIR, 'zip_archive_publisher_saves.yaml').resolve(
 
 
 COLOR_DATASETS_MAIN = '#a1c995'
+COLOR_DATASETS_REMOVE = '#ff6666'
 COLOR_CONFIG_MAIN = '#f9c995'
 
 
@@ -181,6 +182,61 @@ class ConfigPublisher:
         self._config_files = paths
 
 
+class RemovePublisher:
+
+    def __init__(self,
+                 sharkdata_datasets_directory=None,
+                 trigger_url=None,
+                 import_url=None
+                 ):
+        self._config = dict(
+            sharkdata_datasets_directory=sharkdata_datasets_directory,
+            url_trigger_import=trigger_url,
+            url_import_status=import_url
+        )
+
+        self._remove_names = []
+
+        if not all(list(self._config.values())):
+            raise Exception('Missing input parameters!')
+
+    def create_remove_file(self):
+        if not self._remove_names:
+            return
+        with open(self.remove_file_path, 'w') as fid:
+            fid.write('\n'.join(sorted(self._remove_names)))
+
+    @property
+    def sharkdata_datasets_directory(self) -> pathlib.Path:
+        return pathlib.Path(self._config['sharkdata_datasets_directory'])
+
+    @property
+    def url_import_status(self) -> str:
+        return self._config['url_import_status']
+
+    @property
+    def url_trigger_import(self) -> str:
+        return self._config['url_trigger_import']
+
+    @property
+    def remove_file_path(self) -> pathlib.Path:
+        return self.sharkdata_datasets_directory / 'remove.txt'
+
+    @property
+    def _import_status_is_available(self):
+        if requests.get(self.url_import_status).content.decode() == 'AVAILABLE':
+            return True
+        return False
+
+    def trigger_import(self):
+        if not self._import_status_is_available:
+            raise ImportNotAvailable()
+        requests.post(self._config['url_trigger_import'])
+
+    def set_remove_names(self, names: list[str]):
+        self._remove_names = names
+
+
 class ZipPath(ft.UserControl):
     def __init__(self, path: str, on_delete=None):
         super().__init__()
@@ -228,6 +284,7 @@ class ZipArchivePublisherGUI:
 
         self.page = None
         self._zip_paths = set()
+        self._remove_zip_names = set()
         self._config_paths = set()
 
         self._saves = {}
@@ -266,6 +323,7 @@ class ZipArchivePublisherGUI:
 
         page_datasets = self._get_page_datasets()
         page_config = self._get_page_config()
+        page_remove_datasets = self._get_page_remove_datasets()
 
         t = ft.Tabs(
             selected_index=1,
@@ -281,6 +339,11 @@ class ZipArchivePublisherGUI:
                     icon=ft.icons.SETTINGS_OUTLINED,
                     content=page_config,
                 ),
+                ft.Tab(
+                    text="Ta bort datasets",
+                    icon=ft.icons.DELETE_OUTLINE,
+                    content=page_remove_datasets,
+                ),
             ],
             expand=1,
         )
@@ -289,6 +352,10 @@ class ZipArchivePublisherGUI:
 
         self.page.controls.append(t)
         self.update_page()
+
+    def _show_dialog(self, text: str):
+        self._dialog_text.value = text
+        self._open_dlg()
 
     def _get_page_datasets(self):
         self._zip_paths_column = ft.Column(tight=True, scroll=ft.ScrollMode.ALWAYS)
@@ -313,6 +380,32 @@ class ZipArchivePublisherGUI:
             container_paths,
             container_options,
             self._go_dataset_button
+        ], expand=True)
+
+        return col
+
+    def _get_page_remove_datasets(self):
+        self._remove_zip_names_column = ft.Column(tight=True, scroll=ft.ScrollMode.ALWAYS)
+        self._option_create_remove_file = ft.Checkbox(label='Skapa remove.txt-fil')
+        self._option_trigger_remove_file = ft.Checkbox(label='Ta bort paket (trigga import API)')
+        options_column = ft.Column([
+            self._option_create_remove_file,
+            self._option_trigger_remove_file,
+        ])
+        container_paths = ft.Container(bgcolor=COLOR_DATASETS_REMOVE,
+                                       content=self._remove_zip_names_column,
+                                       expand=True)
+        container_options = ft.Container(bgcolor=COLOR_DATASETS_REMOVE,
+                                         content=options_column)
+        self._go_remove_dataset_button = ft.ElevatedButton(text='Kör', on_click=self._run_remove_zip, bgcolor='green')
+        col = ft.Column([
+            self._get_select_sharkdata_remove_dataset_directory_row(),
+            self._get_remove_dataset_pick_url_trigger_row(),
+            self._get_row_add_dataset_to_remove(),
+            self._get_pick_remove_zip_files_button(),
+            container_paths,
+            container_options,
+            self._go_remove_dataset_button
         ], expand=True)
 
         return col
@@ -397,6 +490,51 @@ class ZipArchivePublisherGUI:
         # self._export_saves()
         self._enable_buttons()
 
+    def _run_remove_zip(self, *args):
+        if not any([self._option_create_remove_file.value, self._option_trigger_remove_file.value]):
+            self._dialog_text.value = 'Du har inte valt något att göra!'
+            self._open_dlg()
+            return
+        if not self._remove_zip_names and self._option_create_remove_file.value:
+            self._dialog_text.value = 'Inga zip-arkiv valda för borttagning!'
+            self._open_dlg()
+            return
+
+        if self._remove_zip_names and self._option_create_remove_file.value and not self._sharkdata_remove_dataset_directory.value:
+            self._dialog_text.value = 'Inga mapp för att lägga remove.txt vald!'
+            self._open_dlg()
+            return
+
+        if self._option_trigger_remove_file.value and not all([self._remove_dataset_trigger_url.value.strip(), self._remove_dataset_status_url.value.strip()]):
+            self._dialog_text.value = 'Du måste fylla i fälten för URL!'
+            self._open_dlg()
+            return
+        self._disable_buttons()
+
+        self._export_saves()
+
+        print(self._remove_zip_names)
+        print(self._option_create_remove_file.value)
+
+        publisher = RemovePublisher(
+            sharkdata_datasets_directory=self._sharkdata_remove_dataset_directory.value,
+            trigger_url=self._remove_dataset_trigger_url.value,
+            import_url=self._remove_dataset_status_url.value)
+
+        if self._option_create_remove_file.value:
+            publisher.set_remove_names(list(self._remove_zip_names))
+            publisher.create_remove_file()
+
+        if self._option_trigger_remove_file.value:
+            self._dialog_text.value = f'Triggar import...'
+            self._open_dlg()
+            publisher.trigger_import()
+            time.sleep(1)
+
+        self._dialog_text.value = f'Allt klart!'
+        self._open_dlg()
+        self._enable_buttons()
+
     def _run_config(self, *args):
         if not any([self._option_trigger_config_import.value, 
                     self._option_copy_config_to_sharkdata.value]):
@@ -440,14 +578,20 @@ class ZipArchivePublisherGUI:
         self._enable_buttons()
 
     def _enable_buttons(self):
-        for btn in [self._pick_zip_files_button, self._go_dataset_button,
-                    self._pick_config_files_button, self._go_config_button]:
+        for btn in [
+            self._pick_zip_files_button, self._go_dataset_button,
+            self._pick_remove_zip_files_button, self._go_remove_dataset_button,
+            self._pick_config_files_button, self._go_config_button
+        ]:
             btn.disabled = False
             btn.update()
 
     def _disable_buttons(self):
-        for btn in [self._pick_zip_files_button, self._go_dataset_button,
-                    self._pick_config_files_button, self._go_config_button]:
+        for btn in [
+            self._pick_zip_files_button, self._go_dataset_button,
+            self._pick_remove_zip_files_button, self._go_remove_dataset_button,
+            self._pick_config_files_button, self._go_config_button
+        ]:
             btn.disabled = True
             btn.update()
 
@@ -458,6 +602,12 @@ class ZipArchivePublisherGUI:
         self._saves['_sharkdata_dataset_directory'] = self._sharkdata_dataset_directory
         self._saves['_dataset_trigger_url'] = self._dataset_trigger_url
         self._saves['_dataset_status_url'] = self._dataset_status_url
+
+        self._saves['_option_create_remove_file'] = self._option_create_remove_file
+        self._saves['_option_trigger_remove_file'] = self._option_trigger_remove_file
+        self._saves['_sharkdata_remove_dataset_directory'] = self._sharkdata_remove_dataset_directory
+        self._saves['_remove_dataset_trigger_url'] = self._remove_dataset_trigger_url
+        self._saves['_remove_dataset_status_url'] = self._remove_dataset_status_url
 
         self._saves['_option_copy_config_to_sharkdata'] = self._option_copy_config_to_sharkdata
         self._saves['_option_trigger_config_import'] = self._option_trigger_config_import
@@ -490,6 +640,11 @@ class ZipArchivePublisherGUI:
         self._zip_paths.remove(path_control.path)
         self.update_page()
 
+    def _delete_remove_zip_path(self, path_control: ZipPath):
+        self._remove_zip_names_column.controls.remove(path_control)
+        self._remove_zip_names.remove(pathlib.Path(path_control.path).stem)
+        self.update_page()
+
     def _delete_config_path(self, path_control: ConfigPath):
         self._config_paths_column.controls.remove(path_control)
         self._config_paths.remove(path_control.path)
@@ -510,6 +665,25 @@ class ZipArchivePublisherGUI:
         row = ft.Row(
                 [
                     self._pick_zip_files_button,
+                ]
+            )
+        return row
+
+    def _get_pick_remove_zip_files_button(self) -> ft.Row:
+        pick_remove_zip_files_dialog = ft.FilePicker(on_result=self._on_pick_remove_zip_files)
+
+        self.page.overlay.append(pick_remove_zip_files_dialog)
+        self._pick_remove_zip_files_button = ft.ElevatedButton(
+                        "Välj ett eller flera zip-paket som du vill ta bort",
+                        icon=ft.icons.UPLOAD_FILE,
+                        on_click=lambda _: pick_remove_zip_files_dialog.pick_files(
+                            allow_multiple=True,
+                            allowed_extensions=['zip']
+                        ))
+
+        row = ft.Row(
+                [
+                    self._pick_remove_zip_files_button,
                 ]
             )
         return row
@@ -556,6 +730,29 @@ class ZipArchivePublisherGUI:
             )
         return row
 
+    def _get_select_sharkdata_remove_dataset_directory_row(self) -> ft.Row:
+
+        self._sharkdata_remove_dataset_directory = ft.Text()
+
+        pick_sharkdata_remove_dataset_directory_dialog = ft.FilePicker(on_result=self.on_select_sharkdata_remove_dataset_import_directory)
+
+        self.page.overlay.append(pick_sharkdata_remove_dataset_directory_dialog)
+        self._pick_sharkdata_remove_dataset_directory_button = ft.ElevatedButton(
+                        "Välj mapp där du vill lägga remove.txt",
+                        icon=ft.icons.UPLOAD_FILE,
+                        on_click=lambda _: pick_sharkdata_remove_dataset_directory_dialog.get_directory_path(
+                            dialog_title='Välj mapp där du vill lägga remove.txt',
+                            initial_directory=self._sharkdata_remove_dataset_directory.value
+                        ))
+
+        row = ft.Row(
+                [
+                    self._pick_sharkdata_remove_dataset_directory_button,
+                    self._sharkdata_remove_dataset_directory
+                ]
+            )
+        return row
+
     def _get_select_sharkdata_config_directory_row(self) -> ft.Row:
 
         self._sharkdata_config_directory = ft.Text()
@@ -594,6 +791,21 @@ class ZipArchivePublisherGUI:
         )])
         return row
 
+    def _get_remove_dataset_pick_url_trigger_row(self) -> ft.Row:
+        self._remove_dataset_trigger_url = ft.TextField(multiline=False, label='URL som triggar importen', width=600,
+                                         on_blur=self._on_change_remove_dataset_trigger_url)
+        self._remove_dataset_status_url = ft.TextField(multiline=False, label='URL som kollar status på importen',
+                                        tooltip='Den här sätts automatiskt om trigger-url säts', width=600,
+                                        on_blur=self._on_change_remove_dataset_status_url)
+
+        row = ft.Row([ft.Column(
+            [
+                self._remove_dataset_trigger_url,
+                self._remove_dataset_status_url
+            ]
+        )])
+        return row
+
     def _get_config_pick_url_trigger_row(self) -> ft.Row:
         self._config_trigger_url = ft.TextField(multiline=False,
                                                 label='URL som triggar importen',
@@ -611,6 +823,22 @@ class ZipArchivePublisherGUI:
                 ]
             )])
         return row
+
+    def _get_row_add_dataset_to_remove(self) -> ft.Row:
+        self._textfield_zip_to_remove = ft.TextField(label='Ange zip-paket du vill ta bort', on_submit=self._add_zip_to_remove_from_textfield)
+        btn = ft.ElevatedButton(text='Lägg till i listan',
+                                on_click=self._add_zip_to_remove_from_textfield)
+
+        return ft.Row([self._textfield_zip_to_remove, btn])
+
+    def _add_zip_to_remove_from_textfield(self, event=None):
+        value = self._textfield_zip_to_remove.value.strip()
+        if not value:
+            self._show_dialog('Inget att lägga till')
+            return
+        self._add_remove_zip_names(value)
+        self._textfield_zip_to_remove.value = ''
+        self._textfield_zip_to_remove.update()
 
     @staticmethod
     def _fix_url_str(url: str) -> str:
@@ -630,6 +858,14 @@ class ZipArchivePublisherGUI:
         self._dataset_status_url.value = trigger_url + '/status'
         self._dataset_status_url.update()
 
+    def _on_change_remove_dataset_trigger_url(self, event=None):
+        trigger_url = self._fix_url_str(self._remove_dataset_trigger_url.value)
+        self._remove_dataset_trigger_url.value = trigger_url
+        self._remove_dataset_trigger_url.update()
+
+        self._remove_dataset_status_url.value = trigger_url + '/status'
+        self._remove_dataset_status_url.update()
+
     def _on_change_config_trigger_url(self, event=None):
         trigger_url = self._fix_url_str(self._config_trigger_url.value)
         self._config_trigger_url.value = trigger_url
@@ -643,6 +879,11 @@ class ZipArchivePublisherGUI:
         self._dataset_status_url.value = status_url
         self._dataset_status_url.update()
 
+    def _on_change_remove_dataset_status_url(self, event=None):
+        status_url = self._fix_url_str(self._remove_dataset_status_url.value)
+        self._remove_dataset_status_url.value = status_url
+        self._remove_dataset_status_url.update()
+
     def _on_change_config_status_url(self, event=None):
         status_url = self._fix_url_str(self._config_status_url.value)
         self._config_status_url.value = status_url
@@ -655,6 +896,24 @@ class ZipArchivePublisherGUI:
             self._zip_paths.add(file.path)
         controls = [ZipPath(path, on_delete=self._delete_zip_path) for path in sorted(self._zip_paths)]
         self._zip_paths_column.controls = controls
+        self.update_page()
+
+    def _on_pick_remove_zip_files(self, e: ft.FilePickerResultEvent) -> None:
+        if not e.files:
+            return
+        # names = [pathlib.Path(file.path).stem for file in e.files]
+        # self._add_remove_zip_names(*names)
+        for file in e.files:
+            self._remove_zip_names.add(pathlib.Path(file.path).stem)
+        controls = [ZipPath(path, on_delete=self._delete_remove_zip_path) for path in sorted(self._remove_zip_names)]
+        self._remove_zip_names_column.controls = controls
+        self.update_page()
+
+    def _add_remove_zip_names(self, *names: str):
+        current_controls = self._remove_zip_names_column.controls
+        self._remove_zip_names = sorted(set(([cont.path for cont in current_controls] + list(names))))
+        controls = [ZipPath(path, on_delete=self._delete_remove_zip_path) for path in self._remove_zip_names]
+        self._remove_zip_names_column.controls = sorted(controls, key=lambda x: x.path)
         self.update_page()
 
     def _on_pick_config_files(self, e: ft.FilePickerResultEvent) -> None:
@@ -671,6 +930,12 @@ class ZipArchivePublisherGUI:
             return
         self._sharkdata_dataset_directory.value = e.path
         self._sharkdata_dataset_directory.update()
+
+    def on_select_sharkdata_remove_dataset_import_directory(self, e: ft.FilePickerResultEvent) -> None:
+        if not e.path:
+            return
+        self._sharkdata_remove_dataset_directory.value = e.path
+        self._sharkdata_remove_dataset_directory.update()
 
     def on_select_sharkdata_config_import_directory(self, e: ft.FilePickerResultEvent) -> None:
         if not e.path:
