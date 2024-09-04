@@ -1,1 +1,1 @@
-from .zip_archive_publishing import run_app
+from sharkadm_zip_publisher.flet_app import run_app

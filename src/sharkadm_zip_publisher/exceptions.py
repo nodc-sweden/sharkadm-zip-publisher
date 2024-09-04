@@ -1,0 +1,4 @@
+
+
+class ImportNotAvailable(Exception):
+    pass
