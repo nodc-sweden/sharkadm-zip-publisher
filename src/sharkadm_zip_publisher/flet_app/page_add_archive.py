@@ -38,7 +38,17 @@ class PageAddArchive(ft.UserControl):
         col = ft.Column([
             self._get_select_sharkdata_dataset_directory_row(),
             self._get_dataset_pick_url_trigger_row(),
-            self._get_pick_zip_files_button(),
+            ft.Divider(height=9, thickness=3),
+            ft.Row([
+                self._get_pick_zip_files_button(),
+                ft.IconButton(
+                    icon=ft.icons.DELETE_FOREVER_ROUNDED,
+                    icon_color=COLOR_DATASETS_MAIN,
+                    icon_size=40,
+                    tooltip="Rensa listan",
+                    on_click=self._delete_all_zip_paths
+                ),
+            ]),
             container_paths,
             container_options,
             self._go_dataset_button
@@ -129,6 +139,11 @@ class PageAddArchive(ft.UserControl):
     def _delete_zip_path(self, path_control: ZipPath):
         self._zip_paths_column.controls.remove(path_control)
         self._zip_paths.remove(path_control.path)
+        self.update()
+
+    def _delete_all_zip_paths(self, event=None):
+        self._zip_paths_column.controls = []
+        self._zip_paths = set()
         self.update()
 
     def _on_change_dataset_status_url(self, event=None):

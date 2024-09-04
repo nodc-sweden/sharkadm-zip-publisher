@@ -44,7 +44,7 @@ class ZipArchivePublisherGUI:
     def main(self, page: ft.Page):
         self.page = page
         self.page.title = 'Zip archive publisher'
-        self.page.window_height = 700
+        self.page.window_height = 1000
         self.page.window_width = 1200
         self._build()
         self._add_controls_to_save()

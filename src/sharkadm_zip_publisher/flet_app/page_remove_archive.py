@@ -10,6 +10,7 @@ from sharkadm_zip_publisher.zip import ZipPath
 
 from sharkadm import utils as sharkadm_utils
 
+COLOR_DATASETS_MAIN = '#a1c995'
 COLOR_DATASETS_REMOVE = '#ff6666'
 
 
@@ -37,8 +38,18 @@ class PageRemoveArchive(ft.UserControl):
         col = ft.Column([
             self._get_select_sharkdata_remove_dataset_directory_row(),
             self._get_remove_dataset_pick_url_trigger_row(),
+            ft.Divider(height=9, thickness=3),
             self._get_row_add_dataset_to_remove(),
-            self._get_pick_remove_zip_files_button(),
+            ft.Row([
+                self._get_pick_remove_zip_files_button(),
+                ft.IconButton(
+                    icon=ft.icons.DELETE_FOREVER_ROUNDED,
+                    icon_color=COLOR_DATASETS_MAIN,
+                    icon_size=40,
+                    tooltip="Rensa listan",
+                    on_click=self._delete_all_remove_zip_paths
+                ),
+            ]),
             container_paths,
             container_options,
             self._go_remove_dataset_button
@@ -76,7 +87,9 @@ class PageRemoveArchive(ft.UserControl):
         return row
 
     def _get_row_add_dataset_to_remove(self) -> ft.Row:
-        self._textfield_zip_to_remove = ft.TextField(label='Ange zip-paket du vill ta bort', on_submit=self._add_zip_to_remove_from_textfield)
+        self._textfield_zip_to_remove = ft.TextField(label='Ange zip-paket du vill ta bort',
+                                                     on_submit=self._add_zip_to_remove_from_textfield,
+                                                     width=600)
         btn = ft.ElevatedButton(text='Lägg till i listan',
                                 on_click=self._add_zip_to_remove_from_textfield)
 
@@ -208,4 +221,9 @@ class PageRemoveArchive(ft.UserControl):
     def _delete_remove_zip_path(self, path_control: ZipPath):
         self._remove_zip_names_column.controls.remove(path_control)
         self._remove_zip_names.remove(pathlib.Path(path_control.path).stem)
+        self.update()
+
+    def _delete_all_remove_zip_paths(self, event=None):
+        self._remove_zip_names_column.controls = []
+        self._remove_zip_names = set()
         self.update()
