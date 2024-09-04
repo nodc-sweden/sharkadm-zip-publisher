@@ -1,6 +1,6 @@
 [project]
 name = "sharkadm-zip-publisher"
-version = "0.2.0"
+version = "0.3.0"
 description = "Python application to modify/enrich and publish Data host zip packages"
 authors = [
     {name = "Magnus Wenzer", email = "magnus.wenzer@smhi.se"},
