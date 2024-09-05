@@ -3,15 +3,10 @@ import time
 
 import flet as ft
 
-from sharkadm_zip_publisher.archive_publisher import ArchivePublisher
 from sharkadm_zip_publisher.archive_remover import ArchiveRemover
-from sharkadm_zip_publisher.flet_app.utils import fix_url_str
+from sharkadm_zip_publisher.flet_app.constants import COLOR_DATASETS_REMOVE, COLOR_DATASETS_MAIN
+from sharkadm_zip_publisher.flet_app.saves import publisher_saves
 from sharkadm_zip_publisher.zip import ZipPath
-
-from sharkadm import utils as sharkadm_utils
-
-COLOR_DATASETS_MAIN = '#a1c995'
-COLOR_DATASETS_REMOVE = '#ff6666'
 
 
 class PageRemoveArchive(ft.UserControl):
@@ -37,8 +32,7 @@ class PageRemoveArchive(ft.UserControl):
         self._go_remove_dataset_button = ft.ElevatedButton(text='Kör', on_click=self._run_remove_zip, bgcolor='green')
         col = ft.Column([
             self._get_select_sharkdata_remove_dataset_directory_row(),
-            self._get_remove_dataset_pick_url_trigger_row(),
-            ft.Divider(height=9, thickness=3),
+            ft.Divider(height=9, thickness=3, color=COLOR_DATASETS_REMOVE),
             self._get_row_add_dataset_to_remove(),
             ft.Row([
                 self._get_pick_remove_zip_files_button(),
@@ -70,21 +64,6 @@ class PageRemoveArchive(ft.UserControl):
         ]:
             btn.disabled = True
             btn.update()
-
-    def _get_remove_dataset_pick_url_trigger_row(self) -> ft.Row:
-        self._remove_dataset_trigger_url = ft.TextField(multiline=False, label='URL som triggar importen', width=600,
-                                         on_blur=self._on_change_remove_dataset_trigger_url)
-        self._remove_dataset_status_url = ft.TextField(multiline=False, label='URL som kollar status på importen',
-                                        tooltip='Den här sätts automatiskt om trigger-url säts', width=600,
-                                        on_blur=self._on_change_remove_dataset_status_url)
-
-        row = ft.Row([ft.Column(
-            [
-                self._remove_dataset_trigger_url,
-                self._remove_dataset_status_url
-            ]
-        )])
-        return row
 
     def _get_row_add_dataset_to_remove(self) -> ft.Row:
         self._textfield_zip_to_remove = ft.TextField(label='Ange zip-paket du vill ta bort',
@@ -149,16 +128,16 @@ class PageRemoveArchive(ft.UserControl):
             self.parent.show_dialog('Inga mapp för att lägga remove.txt vald!')
             return
 
-        if self._option_trigger_remove_file.value and not all([self._remove_dataset_trigger_url.value.strip(), self._remove_dataset_status_url.value.strip()]):
+        if self._option_trigger_remove_file.value and not all([self.parent.trigger_url.value.strip(), self.parent.status_url.value.strip()]):
             self.parent.show_dialog('Du måste fylla i fälten för URL!')
             return
         self._disable_buttons()
-        self.parent.export_saves()
+        publisher_saves.export_saves()
 
         publisher = ArchiveRemover(
             sharkdata_datasets_directory=self._sharkdata_remove_dataset_directory.value,
-            trigger_url=self._remove_dataset_trigger_url.value,
-            import_url=self._remove_dataset_status_url.value)
+            trigger_url=self.parent.trigger_url,
+            import_url=self.parent.status_url)
 
         if self._option_create_remove_file.value:
             publisher.set_remove_names(list(self._remove_zip_names))
@@ -177,19 +156,6 @@ class PageRemoveArchive(ft.UserControl):
             return
         self._sharkdata_remove_dataset_directory.value = e.path
         self._sharkdata_remove_dataset_directory.update()
-
-    def _on_change_remove_dataset_trigger_url(self, event=None):
-        trigger_url = fix_url_str(self._remove_dataset_trigger_url.value)
-        self._remove_dataset_trigger_url.value = trigger_url
-        self._remove_dataset_trigger_url.update()
-
-        self._remove_dataset_status_url.value = trigger_url + '/status'
-        self._remove_dataset_status_url.update()
-
-    def _on_change_remove_dataset_status_url(self, event=None):
-        status_url = fix_url_str(self._remove_dataset_status_url.value)
-        self._remove_dataset_status_url.value = status_url
-        self._remove_dataset_status_url.update()
 
     def _on_pick_remove_zip_files(self, e: ft.FilePickerResultEvent) -> None:
         if not e.files:

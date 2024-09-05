@@ -3,9 +3,10 @@ import pathlib
 import requests
 
 from sharkadm_zip_publisher.exceptions import ImportNotAvailable
+from sharkadm_zip_publisher.trigger import Trigger
 
 
-class ArchiveRemover:
+class ArchiveRemover(Trigger):
 
     def __init__(self,
                  sharkdata_datasets_directory=None,
@@ -14,14 +15,15 @@ class ArchiveRemover:
                  ):
         self._config = dict(
             sharkdata_datasets_directory=sharkdata_datasets_directory,
-            url_trigger_import=trigger_url,
-            url_import_status=import_url
+            trigger_url=trigger_url,
+            status_url=import_url
         )
 
         self._remove_names = []
 
         if not all(list(self._config.values())):
             raise Exception('Missing input parameters!')
+        super().__init__(**self._config)
 
     def create_remove_file(self):
         if not self._remove_names:

@@ -1,14 +1,13 @@
 import pathlib
 import shutil
 
-import requests
 from sharkadm import transformers, controller, exporters, adm_logger, utils
 from sharkadm.data import get_zip_archive_data_holder
 
-from sharkadm_zip_publisher.exceptions import ImportNotAvailable
+from sharkadm_zip_publisher.trigger import Trigger
 
 
-class ArchivePublisher:
+class ArchivePublisher(Trigger):
 
     def __init__(self,
                  sharkdata_dataset_directory=None,
@@ -17,11 +16,12 @@ class ArchivePublisher:
                  ):
         self._config = dict(
             sharkdata_dataset_directory=sharkdata_dataset_directory,
-            url_trigger_import=trigger_url,
-            url_import_status=import_url
+            trigger_url=trigger_url,
+            status_url=import_url
         )
         if not all(list(self._config.values())):
             raise Exception('Missing input parameters!')
+        super().__init__(**self._config)
 
         self._zip_archive_paths: list[pathlib.Path] = []
         self._transformers: list[transformers.Transformer] = []
@@ -62,24 +62,6 @@ class ArchivePublisher:
     def sharkdata_dataset_directory(self) -> str:
         return self._config['sharkdata_dataset_directory']
 
-    @property
-    def url_import_status(self) -> str:
-        return self._config['url_import_status']
-
-    @property
-    def url_trigger_import(self) -> str:
-        return self._config['url_trigger_import']
-
-    @property
-    def _import_status_is_available(self):
-        if requests.get(self.url_import_status).content.decode() == 'AVAILABLE':
-            return True
-        return False
-
-    def trigger_import(self):
-        if not self._import_status_is_available:
-            raise ImportNotAvailable()
-        requests.post(self._config['url_trigger_import'])
 
     def _create_transformers(self):
         self._transformers = [

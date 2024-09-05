@@ -5,9 +5,10 @@ import flet as ft
 import requests
 
 from sharkadm_zip_publisher.exceptions import ImportNotAvailable
+from sharkadm_zip_publisher.trigger import Trigger
 
 
-class ConfigPublisher:
+class ConfigPublisher(Trigger):
 
     def __init__(self,
                  sharkdata_config_directory=None,
@@ -16,14 +17,15 @@ class ConfigPublisher:
                  ):
         self._config = dict(
             sharkdata_config_directory=sharkdata_config_directory,
-            url_trigger_import=trigger_url,
-            url_import_status=import_url
+            trigger_url=trigger_url,
+            status_url=import_url
         )
 
         self._config_files = []
 
         if not all(list(self._config.values())):
             raise Exception('Missing input parameters!')
+        super().__init__(**self._config)
 
     def copy_config_files_to_sharkdata(self):
         target_root = pathlib.Path(self._config['sharkdata_config_directory'])
