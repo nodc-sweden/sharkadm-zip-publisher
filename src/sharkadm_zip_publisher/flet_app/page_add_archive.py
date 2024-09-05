@@ -168,5 +168,7 @@ class PageAddArchive(ft.UserControl):
             self.main_app.show_dialog(f'Triggar import...')
             publisher.trigger_import()
             time.sleep(1)
+        self.main_app.show_dialog(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
+        sharkadm_utils.clear_all_in_temp_directory()
         self.main_app.show_dialog(f'Allt klart!')
         self._enable_buttons()

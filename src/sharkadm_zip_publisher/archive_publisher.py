@@ -50,7 +50,6 @@ class ArchivePublisher(Trigger):
             self._controller.export(exporter)
             rezipped_archive_path = self._zip_directory(data_holder.unzipped_archive_directory)
             self._updated_zip_archive_paths.append(pathlib.Path(rezipped_archive_path))
-            print(f'update_zip_archives: {encoding=}')
 
     def copy_archives_to_sharkdata(self):
         target_root = pathlib.Path(self._config['sharkdata_dataset_directory'])
