@@ -10,9 +10,9 @@ from sharkadm_zip_publisher.flet_app.saves import publisher_saves
 
 class PageConfig(ft.UserControl):
 
-    def __init__(self, parent):
+    def __init__(self, main_app):
         super().__init__()
-        self.parent = parent
+        self.main_app = main_app
         self._config_paths = set()
 
     def build(self):
@@ -120,14 +120,14 @@ class PageConfig(ft.UserControl):
     def _run_config(self, *args):
         if not any([self._option_trigger_config_import.value,
                     self._option_copy_config_to_sharkdata.value]):
-            self.parent.show_dialog('Du har inte valt något att göra!')
+            self.main_app.show_dialog('Du har inte valt något att göra!')
             return
         if not self._config_paths and self._option_copy_config_to_sharkdata.value:
-            self.parent.show_dialog('Inga config-filer valda!')
+            self.main_app.show_dialog('Inga config-filer valda!')
             return
-        if self._option_trigger_config_import.value and not all([self.parent.trigger_url.value.strip(),
-                                                                  self.parent.status_url.value.strip()]):
-            self.parent.show_dialog('Du måste fylla i fälten för URL!')
+        if self._option_trigger_config_import.value and not all([self.main_app.trigger_url.value.strip(),
+                                                                  self.main_app.status_url.value.strip()]):
+            self.main_app.show_dialog('Du måste fylla i fälten för URL!')
             return
         self._disable_buttons()
         publisher_saves.export_saves()
@@ -136,8 +136,8 @@ class PageConfig(ft.UserControl):
 
         publisher = ConfigPublisher(
             sharkdata_config_directory=self._sharkdata_config_directory.value,
-            trigger_url=self.parent.trigger_url,
-            import_url=self.parent.status_url
+            trigger_url=self.main_app.trigger_url,
+            import_url=self.main_app.status_url
         )
 
         if self._option_copy_config_to_sharkdata.value:
@@ -145,10 +145,10 @@ class PageConfig(ft.UserControl):
             publisher.copy_config_files_to_sharkdata()
 
         if self._option_trigger_config_import.value:
-            self.parent.show_dialog(f'Triggar import...')
+            self.main_app.show_dialog(f'Triggar import...')
             publisher.trigger_import()
             time.sleep(1)
-        self.parent.show_dialog(f'Allt klart!')
+        self.main_app.show_dialog(f'Allt klart!')
         self._enable_buttons()
 
     def _enable_buttons(self):

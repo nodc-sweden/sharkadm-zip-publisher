@@ -11,9 +11,9 @@ from sharkadm_zip_publisher.zip import ZipPath
 
 class PageAddArchive(ft.UserControl):
 
-    def __init__(self, parent):
+    def __init__(self, main_app):
         super().__init__()
-        self.parent = parent
+        self.main_app = main_app
         self._zip_paths = set()
 
     def build(self):
@@ -136,13 +136,13 @@ class PageAddArchive(ft.UserControl):
 
     def _run_zip(self, *args):
         if not any([self._option_trigger_dataset_import.value, self._option_update_zip_archives.value, self._option_copy_zip_archives_to_sharkdata.value]):
-            self.parent.show_dialog('Du har inte valt något att göra!')
+            self.main_app.show_dialog('Du har inte valt något att göra!')
             return
         if not self._zip_paths and any([self._option_update_zip_archives.value, self._option_copy_zip_archives_to_sharkdata.value]):
-            self.parent.show_dialog('Inga zip-arkiv valda!')
+            self.main_app.show_dialog('Inga zip-arkiv valda!')
             return
-        if self._option_trigger_dataset_import.value and not all([self.parent.trigger_url.value.strip(), self.parent.dataset_status_url.value.strip()]):
-            self.parent.show_dialog('Du måste fylla i fälten för URL!')
+        if self._option_trigger_dataset_import.value and not all([self.main_app.trigger_url.strip(), self.main_app.status_url.strip()]):
+            self.main_app.show_dialog('Du måste fylla i fälten för URL!')
             return
 
         self._disable_buttons()
@@ -152,21 +152,21 @@ class PageAddArchive(ft.UserControl):
 
         publisher = ArchivePublisher(
             sharkdata_dataset_directory=self._sharkdata_dataset_directory.value,
-            trigger_url=self.parent.trigger_url,
-            import_url=self.parent.status_url
+            trigger_url=self.main_app.trigger_url,
+            import_url=self.main_app.status_url
         )
 
         for path in self._zip_paths:
             publisher.set_zip_archive_paths(path)
             if self._option_update_zip_archives.value:
-                self.parent.show_dialog(f'Uppdaterar {path}...')
+                self.main_app.show_dialog(f'Uppdaterar {path}...')
                 publisher.update_zip_archives()
             if self._option_copy_zip_archives_to_sharkdata.value:
-                self.parent.show_dialog(f'Kopierar {path}...')
+                self.main_app.show_dialog(f'Kopierar {path}...')
                 publisher.copy_archives_to_sharkdata()
         if self._option_trigger_dataset_import.value:
-            self.parent.show_dialog(f'Triggar import...')
+            self.main_app.show_dialog(f'Triggar import...')
             publisher.trigger_import()
             time.sleep(1)
-        self.parent.show_dialog(f'Allt klart!')
+        self.main_app.show_dialog(f'Allt klart!')
         self._enable_buttons()

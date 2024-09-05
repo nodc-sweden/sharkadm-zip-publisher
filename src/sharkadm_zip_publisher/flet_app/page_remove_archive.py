@@ -11,9 +11,9 @@ from sharkadm_zip_publisher.zip import ZipPath
 
 class PageRemoveArchive(ft.UserControl):
 
-    def __init__(self, parent):
+    def __init__(self, main_app):
         super().__init__()
-        self.parent = parent
+        self.main_app = main_app
         self._remove_zip_names = set()
 
     def build(self):
@@ -118,37 +118,37 @@ class PageRemoveArchive(ft.UserControl):
 
     def _run_remove_zip(self, *args):
         if not any([self._option_create_remove_file.value, self._option_trigger_remove_file.value]):
-            self.parent.show_dialog('Du har inte valt något att göra!')
+            self.main_app.show_dialog('Du har inte valt något att göra!')
             return
         if not self._remove_zip_names and self._option_create_remove_file.value:
-            self.parent.show_dialog('Inga zip-arkiv valda för borttagning!')
+            self.main_app.show_dialog('Inga zip-arkiv valda för borttagning!')
             return
 
         if self._remove_zip_names and self._option_create_remove_file.value and not self._sharkdata_remove_dataset_directory.value:
-            self.parent.show_dialog('Inga mapp för att lägga remove.txt vald!')
+            self.main_app.show_dialog('Inga mapp för att lägga remove.txt vald!')
             return
 
-        if self._option_trigger_remove_file.value and not all([self.parent.trigger_url.value.strip(), self.parent.status_url.value.strip()]):
-            self.parent.show_dialog('Du måste fylla i fälten för URL!')
+        if self._option_trigger_remove_file.value and not all([self.main_app.trigger_url.value.strip(), self.main_app.status_url.value.strip()]):
+            self.main_app.show_dialog('Du måste fylla i fälten för URL!')
             return
         self._disable_buttons()
         publisher_saves.export_saves()
 
         publisher = ArchiveRemover(
             sharkdata_datasets_directory=self._sharkdata_remove_dataset_directory.value,
-            trigger_url=self.parent.trigger_url,
-            import_url=self.parent.status_url)
+            trigger_url=self.main_app.trigger_url,
+            import_url=self.main_app.status_url)
 
         if self._option_create_remove_file.value:
             publisher.set_remove_names(list(self._remove_zip_names))
             publisher.create_remove_file()
 
         if self._option_trigger_remove_file.value:
-            self.parent.show_dialog(f'Triggar import...')
+            self.main_app.show_dialog(f'Triggar import...')
             publisher.trigger_import()
             time.sleep(1)
 
-        self.parent.show_dialog(f'Allt klart!')
+        self.main_app.show_dialog(f'Allt klart!')
         self._enable_buttons()
 
     def on_select_sharkdata_remove_dataset_import_directory(self, e: ft.FilePickerResultEvent) -> None:
@@ -171,7 +171,7 @@ class PageRemoveArchive(ft.UserControl):
     def _add_zip_to_remove_from_textfield(self, event=None):
         value = self._textfield_zip_to_remove.value.strip()
         if not value:
-            self.parent.show_dialog('Inget att lägga till')
+            self.main_app.show_dialog('Inget att lägga till')
             return
         self._add_remove_zip_names(value)
         self._textfield_zip_to_remove.value = ''
