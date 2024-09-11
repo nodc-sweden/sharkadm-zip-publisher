@@ -75,6 +75,8 @@ class ZipArchivePublisherGUI:
             title=self._dialog_text
         )
 
+        self._info_text = ft.Text(bgcolor='gray')
+
         self.page_add_archive = PageAddArchive(self)
         self.page_remove_archive = PageRemoveArchive(self)
         self.page_config = PageConfig(self)
@@ -110,6 +112,7 @@ class ZipArchivePublisherGUI:
         ]))
         self.page.controls.append(ft.Divider(height=9, thickness=3, color=COLOR_DATASETS_MAIN))
         self.page.controls.append(t)
+        self.page.controls.append(self._info_text)
         self.update_page()
 
     def _get_url_col(self) -> ft.Column:
@@ -187,9 +190,14 @@ class ZipArchivePublisherGUI:
         self.update_page()
 
     def _on_log_workflow(self, msg: str) -> None:
-        self._add_to_log_file(msg)
-        self._dialog_text.value = msg
-        self._open_dlg()
+        self.show_info(msg)
+        # self._add_to_log_file(msg)
+        # self._dialog_text.value = msg
+        # self._open_dlg()
+
+    def show_info(self, msg: str = '') -> None:
+        self._info_text.value = msg
+        self._info_text.update()
 
     def _add_controls_to_save(self):
         # self._saves['page_add_archive._option_update_zip_archives'] = self.page_add_archive._option_update_zip_archives
