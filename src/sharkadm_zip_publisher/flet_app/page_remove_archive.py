@@ -117,39 +117,43 @@ class PageRemoveArchive(ft.UserControl):
         return row
 
     def _run_remove_zip(self, *args):
-        if not any([self._option_create_remove_file.value, self._option_trigger_remove_file.value]):
-            self.main_app.show_dialog('Du har inte valt något att göra!')
-            return
-        if not self._remove_zip_names and self._option_create_remove_file.value:
-            self.main_app.show_dialog('Inga zip-arkiv valda för borttagning!')
-            return
+        try:
+            if not any([self._option_create_remove_file.value, self._option_trigger_remove_file.value]):
+                self.main_app.show_dialog('Du har inte valt något att göra!')
+                return
+            if not self._remove_zip_names and self._option_create_remove_file.value:
+                self.main_app.show_dialog('Inga zip-arkiv valda för borttagning!')
+                return
 
-        if self._remove_zip_names and self._option_create_remove_file.value and not self._sharkdata_remove_dataset_directory.value:
-            self.main_app.show_dialog('Inga mapp för att lägga remove.txt vald!')
-            return
+            if self._remove_zip_names and self._option_create_remove_file.value and not self._sharkdata_remove_dataset_directory.value:
+                self.main_app.show_dialog('Inga mapp för att lägga remove.txt vald!')
+                return
 
-        if self._option_trigger_remove_file.value and not all([self.main_app.trigger_url.value.strip(), self.main_app.status_url.value.strip()]):
-            self.main_app.show_dialog('Du måste fylla i fälten för URL!')
-            return
-        self._disable_buttons()
-        publisher_saves.export_saves()
+            if self._option_trigger_remove_file.value and not all([self.main_app.trigger_url.value.strip(), self.main_app.status_url.value.strip()]):
+                self.main_app.show_dialog('Du måste fylla i fälten för URL!')
+                return
+            self._disable_buttons()
+            publisher_saves.export_saves()
 
-        publisher = ArchiveRemover(
-            sharkdata_datasets_directory=self._sharkdata_remove_dataset_directory.value,
-            trigger_url=self.main_app.trigger_url,
-            import_url=self.main_app.status_url)
+            publisher = ArchiveRemover(
+                sharkdata_datasets_directory=self._sharkdata_remove_dataset_directory.value,
+                trigger_url=self.main_app.trigger_url,
+                import_url=self.main_app.status_url)
 
-        if self._option_create_remove_file.value:
-            publisher.set_remove_names(list(self._remove_zip_names))
-            publisher.create_remove_file()
+            if self._option_create_remove_file.value:
+                publisher.set_remove_names(list(self._remove_zip_names))
+                publisher.create_remove_file()
 
-        if self._option_trigger_remove_file.value:
-            self.main_app.show_dialog(f'Triggar import...')
-            publisher.trigger_import()
-            time.sleep(1)
+            if self._option_trigger_remove_file.value:
+                self.main_app.show_dialog(f'Triggar import...')
+                publisher.trigger_import()
+                time.sleep(1)
 
-        self.main_app.show_dialog(f'Allt klart!')
-        self._enable_buttons()
+            self.main_app.show_dialog(f'Allt klart!')
+            self._enable_buttons()
+        except Exception as e:
+            self.main_app.show_dialog(f'Något gick fel:\n{e}')
+            raise
 
     def on_select_sharkdata_remove_dataset_import_directory(self, e: ft.FilePickerResultEvent) -> None:
         if not e.path:
@@ -160,10 +164,8 @@ class PageRemoveArchive(ft.UserControl):
     def _on_pick_remove_zip_files(self, e: ft.FilePickerResultEvent) -> None:
         if not e.files:
             return
-        # names = [pathlib.Path(file.path).stem for file in e.files]
-        # self._add_remove_zip_names(*names)
         for file in e.files:
-            self._remove_zip_names.add(pathlib.Path(file.path).stem)
+            self._remove_zip_names.add(pathlib.Path(file.path).name)
         controls = [ZipPath(path, on_delete=self._delete_remove_zip_path) for path in sorted(self._remove_zip_names)]
         self._remove_zip_names_column.controls = controls
         self.update()
@@ -186,7 +188,7 @@ class PageRemoveArchive(ft.UserControl):
 
     def _delete_remove_zip_path(self, path_control: ZipPath):
         self._remove_zip_names_column.controls.remove(path_control)
-        self._remove_zip_names.remove(pathlib.Path(path_control.path).stem)
+        self._remove_zip_names.remove(pathlib.Path(path_control.path).name)
         self.update()
 
     def _delete_all_remove_zip_paths(self, event=None):

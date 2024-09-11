@@ -1,10 +1,11 @@
+import os
 import pathlib
 import time
 
 import flet as ft
 import yaml
 from sharkadm import event
-from sharkadm import utils
+from sharkadm_zip_publisher.flet_app import utils
 
 from sharkadm_zip_publisher.flet_app.constants import COLOR_DATASETS_MAIN, COLOR_DATASETS_REMOVE
 from sharkadm_zip_publisher.flet_app.page_add_archive import PageAddArchive
@@ -13,10 +14,9 @@ from sharkadm_zip_publisher.flet_app.page_config import PageConfig
 from sharkadm_zip_publisher.flet_app.utils import fix_url_str
 from sharkadm_zip_publisher.trigger import Trigger
 
-USER_DIR = utils.get_root_directory() / 'zip_archive_publisher'
-USER_DIR.mkdir(parents=True, exist_ok=True)
-SAVES_PATH = pathlib.Path(USER_DIR, 'zip_archive_publisher_saves.yaml').resolve()
 
+USER_DIR = utils.USER_DIR
+SAVES_PATH = utils.SAVES_PATH
 
 from sharkadm_zip_publisher.flet_app.saves import publisher_saves
 
@@ -35,6 +35,20 @@ class ZipArchivePublisherGUI:
         event.subscribe('log_workflow', self._on_log_workflow)
 
         self.app = ft.app(target=self.main)
+
+        self._remove_log_file()
+
+    @property
+    def log_file_path(self) -> pathlib.Path:
+        return USER_DIR / 'zip_publisher_log.txt'
+
+    def _remove_log_file(self):
+        if self.log_file_path.exists():
+            os.remove(self.log_file_path)
+
+    def _add_to_log_file(self, text: str) -> None:
+        with open(self.log_file_path, 'a', encoding='cp1252') as fid:
+            fid.write(f'{text}\n')
 
     @property
     def _log_directory(self):
@@ -173,6 +187,7 @@ class ZipArchivePublisherGUI:
         self.update_page()
 
     def _on_log_workflow(self, msg: str) -> None:
+        self._add_to_log_file(msg)
         self._dialog_text.value = msg
         self._open_dlg()
 

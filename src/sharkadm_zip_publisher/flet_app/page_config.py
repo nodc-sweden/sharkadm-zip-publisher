@@ -118,38 +118,43 @@ class PageConfig(ft.UserControl):
         self._sharkdata_config_directory.update()
 
     def _run_config(self, *args):
-        if not any([self._option_trigger_config_import.value,
-                    self._option_copy_config_to_sharkdata.value]):
-            self.main_app.show_dialog('Du har inte valt något att göra!')
-            return
-        if not self._config_paths and self._option_copy_config_to_sharkdata.value:
-            self.main_app.show_dialog('Inga config-filer valda!')
-            return
-        if self._option_trigger_config_import.value and not all([self.main_app.trigger_url.value.strip(),
-                                                                  self.main_app.status_url.value.strip()]):
-            self.main_app.show_dialog('Du måste fylla i fälten för URL!')
-            return
-        self._disable_buttons()
-        publisher_saves.export_saves()
+        try:
+            if not any([self._option_trigger_config_import.value,
+                        self._option_copy_config_to_sharkdata.value]):
+                self.main_app.show_dialog('Du har inte valt något att göra!')
+                return
+            if not self._config_paths and self._option_copy_config_to_sharkdata.value:
+                self.main_app.show_dialog('Inga config-filer valda!')
+                return
+            if self._option_trigger_config_import.value and not all([self.main_app.trigger_url.value.strip(),
+                                                                      self.main_app.status_url.value.strip()]):
+                self.main_app.show_dialog('Du måste fylla i fälten för URL!')
+                return
+            self._disable_buttons()
+            publisher_saves.export_saves()
 
-        sharkadm_utils.clear_temp_directory()
+            sharkadm_utils.clear_temp_directory()
 
-        publisher = ConfigPublisher(
-            sharkdata_config_directory=self._sharkdata_config_directory.value,
-            trigger_url=self.main_app.trigger_url,
-            import_url=self.main_app.status_url
-        )
+            publisher = ConfigPublisher(
+                sharkdata_config_directory=self._sharkdata_config_directory.value,
+                trigger_url=self.main_app.trigger_url,
+                import_url=self.main_app.status_url
+            )
 
-        if self._option_copy_config_to_sharkdata.value:
-            publisher.set_config_paths(list(self._config_paths))
-            publisher.copy_config_files_to_sharkdata()
+            if self._option_copy_config_to_sharkdata.value:
+                publisher.set_config_paths(list(self._config_paths))
+                publisher.copy_config_files_to_sharkdata()
 
-        if self._option_trigger_config_import.value:
-            self.main_app.show_dialog(f'Triggar import...')
-            publisher.trigger_import()
-            time.sleep(1)
-        self.main_app.show_dialog(f'Allt klart!')
-        self._enable_buttons()
+            if self._option_trigger_config_import.value:
+                self.main_app.show_dialog(f'Triggar import...')
+                publisher.trigger_import()
+                time.sleep(1)
+            self.main_app.show_dialog(f'Allt klart!')
+            self._enable_buttons()
+        except Exception as e:
+            self.main_app.show_dialog(f'Något gick fel:\n{e}')
+            raise
+
 
     def _enable_buttons(self):
         for btn in [

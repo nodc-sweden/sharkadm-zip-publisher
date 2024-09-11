@@ -2,10 +2,12 @@ import time
 
 import flet as ft
 from sharkadm import utils as sharkadm_utils
+from sharkadm.sharkadm_logger import create_xlsx_report, adm_logger
 
 from sharkadm_zip_publisher.archive_publisher import ArchivePublisher
 from sharkadm_zip_publisher.flet_app.constants import COLOR_DATASETS_MAIN
 from sharkadm_zip_publisher.flet_app.saves import publisher_saves
+from sharkadm_zip_publisher.flet_app import utils
 from sharkadm_zip_publisher.zip import ZipPath
 
 
@@ -135,40 +137,45 @@ class PageAddArchive(ft.UserControl):
             btn.update()
 
     def _run_zip(self, *args):
-        if not any([self._option_trigger_dataset_import.value, self._option_update_zip_archives.value, self._option_copy_zip_archives_to_sharkdata.value]):
-            self.main_app.show_dialog('Du har inte valt något att göra!')
-            return
-        if not self._zip_paths and any([self._option_update_zip_archives.value, self._option_copy_zip_archives_to_sharkdata.value]):
-            self.main_app.show_dialog('Inga zip-arkiv valda!')
-            return
-        if self._option_trigger_dataset_import.value and not all([self.main_app.trigger_url.strip(), self.main_app.status_url.strip()]):
-            self.main_app.show_dialog('Du måste fylla i fälten för URL!')
-            return
+        try:
+            if not any([self._option_trigger_dataset_import.value, self._option_update_zip_archives.value, self._option_copy_zip_archives_to_sharkdata.value]):
+                self.main_app.show_dialog('Du har inte valt något att göra!')
+                return
+            if not self._zip_paths and any([self._option_update_zip_archives.value, self._option_copy_zip_archives_to_sharkdata.value]):
+                self.main_app.show_dialog('Inga zip-arkiv valda!')
+                return
+            if self._option_trigger_dataset_import.value and not all([self.main_app.trigger_url.strip(), self.main_app.status_url.strip()]):
+                self.main_app.show_dialog('Du måste fylla i fälten för URL!')
+                return
 
-        self._disable_buttons()
-        publisher_saves.export_saves()
+            self._disable_buttons()
+            publisher_saves.export_saves()
 
-        sharkadm_utils.clear_temp_directory()
+            sharkadm_utils.clear_temp_directory()
 
-        publisher = ArchivePublisher(
-            sharkdata_dataset_directory=self._sharkdata_dataset_directory.value,
-            trigger_url=self.main_app.trigger_url,
-            import_url=self.main_app.status_url
-        )
+            publisher = ArchivePublisher(
+                sharkdata_dataset_directory=self._sharkdata_dataset_directory.value,
+                trigger_url=self.main_app.trigger_url,
+                import_url=self.main_app.status_url
+            )
 
-        for path in self._zip_paths:
-            publisher.set_zip_archive_paths(path)
-            if self._option_update_zip_archives.value:
-                self.main_app.show_dialog(f'Uppdaterar {path}...')
-                publisher.update_zip_archives()
-            if self._option_copy_zip_archives_to_sharkdata.value:
-                self.main_app.show_dialog(f'Kopierar {path}...')
-                publisher.copy_archives_to_sharkdata()
-        if self._option_trigger_dataset_import.value:
-            self.main_app.show_dialog(f'Triggar import...')
-            publisher.trigger_import()
-            time.sleep(1)
-        self.main_app.show_dialog(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
-        sharkadm_utils.clear_all_in_temp_directory()
-        self.main_app.show_dialog(f'Allt klart!')
-        self._enable_buttons()
+            for path in self._zip_paths:
+                publisher.set_zip_archive_paths(path)
+                if self._option_update_zip_archives.value:
+                    self.main_app.show_dialog(f'Uppdaterar {path}...')
+                    publisher.update_zip_archives()
+                if self._option_copy_zip_archives_to_sharkdata.value:
+                    self.main_app.show_dialog(f'Kopierar {path}...')
+                    publisher.copy_archives_to_sharkdata()
+            if self._option_trigger_dataset_import.value:
+                self.main_app.show_dialog(f'Triggar import...')
+                publisher.trigger_import()
+                time.sleep(1)
+            self.main_app.show_dialog(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
+            sharkadm_utils.clear_all_in_temp_directory()
+            create_xlsx_report(adm_logger, export_directory=utils.USER_DIR)
+            self.main_app.show_dialog(f'Allt klart!')
+            self._enable_buttons()
+        except Exception as e:
+            self.main_app.show_dialog(f'Något gick fel:\n{e}')
+            raise
