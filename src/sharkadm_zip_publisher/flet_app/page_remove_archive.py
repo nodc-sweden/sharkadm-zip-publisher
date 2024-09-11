@@ -145,7 +145,7 @@ class PageRemoveArchive(ft.UserControl):
                 publisher.create_remove_file()
 
             if self._option_trigger_remove_file.value:
-                self.main_app.show_dialog(f'Triggar import...')
+                self.main_app.show_info(f'Triggar import...')
                 publisher.trigger_import()
                 time.sleep(1)
 
@@ -173,7 +173,7 @@ class PageRemoveArchive(ft.UserControl):
     def _add_zip_to_remove_from_textfield(self, event=None):
         value = self._textfield_zip_to_remove.value.strip()
         if not value:
-            self.main_app.show_dialog('Inget att lägga till')
+            self.main_app.show_dialog('Inget valt för borttagning')
             return
         self._add_remove_zip_names(value)
         self._textfield_zip_to_remove.value = ''

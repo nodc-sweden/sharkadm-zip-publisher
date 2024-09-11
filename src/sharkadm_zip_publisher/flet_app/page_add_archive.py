@@ -162,16 +162,16 @@ class PageAddArchive(ft.UserControl):
             for path in self._zip_paths:
                 publisher.set_zip_archive_paths(path)
                 if self._option_update_zip_archives.value:
-                    self.main_app.show_dialog(f'Uppdaterar {path}...')
+                    self.main_app.show_info(f'Uppdaterar {path}...')
                     publisher.update_zip_archives()
                 if self._option_copy_zip_archives_to_sharkdata.value:
-                    self.main_app.show_dialog(f'Kopierar {path}...')
+                    self.main_app.show_info(f'Kopierar {path}...')
                     publisher.copy_archives_to_sharkdata()
             if self._option_trigger_dataset_import.value:
-                self.main_app.show_dialog(f'Triggar import...')
+                self.main_app.show_info(f'Triggar import...')
                 publisher.trigger_import()
                 time.sleep(1)
-            self.main_app.show_dialog(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
+            self.main_app.show_info(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
             sharkadm_utils.clear_all_in_temp_directory()
             create_xlsx_report(adm_logger, export_directory=utils.USER_DIR)
             self.main_app.show_dialog(f'Allt klart!')

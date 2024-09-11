@@ -146,7 +146,7 @@ class PageConfig(ft.UserControl):
                 publisher.copy_config_files_to_sharkdata()
 
             if self._option_trigger_config_import.value:
-                self.main_app.show_dialog(f'Triggar import...')
+                self.main_app.show_info(f'Triggar import...')
                 publisher.trigger_import()
                 time.sleep(1)
             self.main_app.show_dialog(f'Allt klart!')
