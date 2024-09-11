@@ -6,9 +6,9 @@ authors = [
     {name = "Magnus Wenzer", email = "magnus.wenzer@smhi.se"},
 ]
 dependencies = [
-    "flet>=0.21.2",
-    "nodc-codes @ git+https://github.com/nodc-sweden/nodc-codes.git@v0.1.1",
-    "sharkadm @ git+https://github.com/nodc-sweden/SHARKadm.git@v0.1.5",
+    "flet>=0.24.1",
+    #    "nodc-codes @ git+https://github.com/nodc-sweden/nodc-codes.git@v0.1.1",
+    #    "sharkadm @ git+https://github.com/nodc-sweden/SHARKadm.git@v0.1.5",
 ]
 requires-python = "<3.14,>=3.11"
 readme = "README.md"
@@ -25,4 +25,6 @@ distribution = true
 [tool.pdm.dev-dependencies]
 dev = [
     "pyinstaller>=6.10.0",
+    "-e file:///C:/mw/git/nodc-codes#egg=nodc-codes",
+    "-e file:///C:/mw/git/SHARKadm#egg=sharkadm",
 ]
