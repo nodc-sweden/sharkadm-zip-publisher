@@ -1,23 +1,24 @@
+import os
 import pathlib
 import time
 
 import flet as ft
 import yaml
 from sharkadm import event
-from sharkadm import utils
+from sharkadm_zip_publisher.flet_app import utils
 
-from sharkadm_zip_publisher.archive_publisher import ArchivePublisher
-from sharkadm_zip_publisher.archive_remover import ArchiveRemover
-from sharkadm_zip_publisher.config_publisher import ConfigPublisher, ConfigPath
-from sharkadm_zip_publisher.zip import ZipPath
-
+from sharkadm_zip_publisher.flet_app.constants import COLOR_DATASETS_MAIN, COLOR_DATASETS_REMOVE
 from sharkadm_zip_publisher.flet_app.page_add_archive import PageAddArchive
 from sharkadm_zip_publisher.flet_app.page_remove_archive import PageRemoveArchive
 from sharkadm_zip_publisher.flet_app.page_config import PageConfig
+from sharkadm_zip_publisher.flet_app.utils import fix_url_str
+from sharkadm_zip_publisher.trigger import Trigger
 
-USER_DIR = utils.get_root_directory() / 'zip_archive_publisher'
-USER_DIR.mkdir(parents=True, exist_ok=True)
-SAVES_PATH = pathlib.Path(USER_DIR, 'zip_archive_publisher_saves.yaml').resolve()
+
+USER_DIR = utils.USER_DIR
+SAVES_PATH = utils.SAVES_PATH
+
+from sharkadm_zip_publisher.flet_app.saves import publisher_saves
 
 
 class ZipArchivePublisherGUI:
@@ -35,6 +36,20 @@ class ZipArchivePublisherGUI:
 
         self.app = ft.app(target=self.main)
 
+        self._remove_log_file()
+
+    @property
+    def log_file_path(self) -> pathlib.Path:
+        return USER_DIR / 'zip_publisher_log.txt'
+
+    def _remove_log_file(self):
+        if self.log_file_path.exists():
+            os.remove(self.log_file_path)
+
+    def _add_to_log_file(self, text: str) -> None:
+        with open(self.log_file_path, 'a', encoding='cp1252') as fid:
+            fid.write(f'{text}\n')
+
     @property
     def _log_directory(self):
         path = pathlib.Path(pathlib.Path.home(), 'logs')
@@ -48,7 +63,8 @@ class ZipArchivePublisherGUI:
         self.page.window_width = 1200
         self._build()
         self._add_controls_to_save()
-        self.import_saves()
+        # self.import_saves()
+        publisher_saves.import_saves(self)
 
     def update_page(self):
         self.page.update()
@@ -88,8 +104,78 @@ class ZipArchivePublisherGUI:
 
         t.selected_index = 0
 
+        self.page.controls.append(ft.Row([
+            self._get_option_column(),
+            self._get_url_col()
+        ]))
+        self.page.controls.append(ft.Divider(height=9, thickness=3, color=COLOR_DATASETS_MAIN))
         self.page.controls.append(t)
         self.update_page()
+
+    def _get_url_col(self) -> ft.Column:
+        self._trigger_url = ft.TextField(multiline=False, label='URL som triggar importen', width=600,
+                                         on_blur=self._on_change_trigger_url)
+        self._status_url = ft.TextField(multiline=False, label='URL som kollar status på importen',
+                                        tooltip='Den här sätts automatiskt om trigger-url säts', width=600,
+                                        on_blur=self._on_change_status_url)
+
+        col = ft.Column(
+            [
+                self._trigger_url,
+                self._status_url
+            ]
+        )
+        return col
+
+    def _get_option_column(self) -> ft.Column:
+        dd_options = [ft.dropdown.Option(value) for value in publisher_saves.envs]
+        self._env_dropdown = ft.Dropdown(
+            width=100,
+            options=dd_options,
+            on_change=self._on_change_env
+        )
+        self._env_dropdown.value = 'TEST'
+
+        btn = ft.ElevatedButton(text='Trigga import', on_click=self._trigger_import, bgcolor='green')
+
+        return ft.Column([
+            self._env_dropdown,
+            btn
+        ])
+
+    def _on_change_env(self, event=None):
+        value = self._env_dropdown.value
+        publisher_saves.set_env(value)
+        publisher_saves.import_saves(self)
+
+    def _trigger_import(self, event=None):
+        if not (self.trigger_url and self.status_url):
+            self.show_dialog('Du måste fylla i fälten för URL!')
+            return
+        trig = Trigger(trigger_url=self.trigger_url, status_url=self.status_url)
+        trig.trigger_import()
+        self.show_dialog(f'Importen har triggats!')
+
+    @property
+    def trigger_url(self) -> str:
+        return self._trigger_url.value
+
+    @property
+    def status_url(self) -> str:
+        return self._status_url.value
+
+    def _on_change_trigger_url(self, event=None):
+        trigger_url = fix_url_str(self._trigger_url.value)
+        self._trigger_url.value = trigger_url
+        self._trigger_url.update()
+
+        self._status_url.value = trigger_url + '/status'
+        self._status_url.update()
+
+    def _on_change_status_url(self, event=None):
+        status_url = fix_url_str(self._status_url.value)
+        self._status_url.value = status_url
+        self._status_url.update()
 
     def show_dialog(self, text: str):
         self._dialog_text.value = text
@@ -101,53 +187,70 @@ class ZipArchivePublisherGUI:
         self.update_page()
 
     def _on_log_workflow(self, msg: str) -> None:
+        self._add_to_log_file(msg)
         self._dialog_text.value = msg
         self._open_dlg()
 
     def _add_controls_to_save(self):
-        self._saves['page_add_archive._option_update_zip_archives'] = self.page_add_archive._option_update_zip_archives
-        self._saves['page_add_archive._option_copy_zip_archives_to_sharkdata'] = self.page_add_archive._option_copy_zip_archives_to_sharkdata
-        self._saves['page_add_archive._option_trigger_dataset_import'] = self.page_add_archive._option_trigger_dataset_import
-        self._saves['page_add_archive._sharkdata_dataset_directory'] = self.page_add_archive._sharkdata_dataset_directory
-        self._saves['page_add_archive._dataset_trigger_url'] = self.page_add_archive._dataset_trigger_url
-        self._saves['page_add_archive._dataset_status_url'] = self.page_add_archive._dataset_status_url
+        # self._saves['page_add_archive._option_update_zip_archives'] = self.page_add_archive._option_update_zip_archives
+        # self._saves[
+        #     'page_add_archive._option_copy_zip_archives_to_sharkdata'] = self.page_add_archive._option_copy_zip_archives_to_sharkdata
+        # self._saves[
+        #     'page_add_archive._option_trigger_dataset_import'] = self.page_add_archive._option_trigger_dataset_import
+        # self._saves[
+        #     'page_add_archive._sharkdata_dataset_directory'] = self.page_add_archive._sharkdata_dataset_directory
+        #
+        # self._saves[
+        #     'page_remove_archive._option_create_remove_file'] = self.page_remove_archive._option_create_remove_file
+        # self._saves[
+        #     'page_remove_archive._option_trigger_remove_file'] = self.page_remove_archive._option_trigger_remove_file
+        # self._saves[
+        #     'page_remove_archive._sharkdata_remove_dataset_directory'] = self.page_remove_archive._sharkdata_remove_dataset_directory
+        #
+        # self._saves['page_config._option_copy_config_to_sharkdata'] = self.page_config._option_copy_config_to_sharkdata
+        # self._saves['page_config._option_trigger_config_import'] = self.page_config._option_trigger_config_import
+        # self._saves['page_config._sharkdata_config_directory'] = self.page_config._sharkdata_config_directory
 
-        self._saves['page_remove_archive._option_create_remove_file'] = self.page_remove_archive._option_create_remove_file
-        self._saves['page_remove_archive._option_trigger_remove_file'] = self.page_remove_archive._option_trigger_remove_file
-        self._saves['page_remove_archive._sharkdata_remove_dataset_directory'] = self.page_remove_archive._sharkdata_remove_dataset_directory
-        self._saves['page_remove_archive._remove_dataset_trigger_url'] = self.page_remove_archive._remove_dataset_trigger_url
-        self._saves['page_remove_archive._remove_dataset_status_url'] = self.page_remove_archive._remove_dataset_status_url
+        publisher_saves.add_control('_trigger_url', self._trigger_url)
+        publisher_saves.add_control('_status_url', self._status_url)
 
-        self._saves['page_config._option_copy_config_to_sharkdata'] = self.page_config._option_copy_config_to_sharkdata
-        self._saves['page_config._option_trigger_config_import'] = self.page_config._option_trigger_config_import
-        self._saves['page_config._sharkdata_config_directory'] = self.page_config._sharkdata_config_directory
-        self._saves['page_config._config_trigger_url'] = self.page_config._config_trigger_url
-        self._saves['page_config._config_status_url'] = self.page_config._config_status_url
+        publisher_saves.add_control('page_add_archive._option_update_zip_archives', self.page_add_archive._option_update_zip_archives)
+        publisher_saves.add_control('page_add_archive._option_copy_zip_archives_to_sharkdata', self.page_add_archive._option_copy_zip_archives_to_sharkdata)
+        publisher_saves.add_control('page_add_archive._option_trigger_dataset_import', self.page_add_archive._option_trigger_dataset_import)
+        publisher_saves.add_control('page_add_archive._sharkdata_dataset_directory', self.page_add_archive._sharkdata_dataset_directory)
 
-    def export_saves(self):
-        data = {}
-        for key, cont in self._saves.items():
-            data[key] = cont.value
-        with open(SAVES_PATH, 'w') as fid:
-            yaml.safe_dump(data, fid)
+        publisher_saves.add_control('page_remove_archive._option_create_remove_file', self.page_remove_archive._option_create_remove_file)
+        publisher_saves.add_control('page_remove_archive._option_trigger_remove_file', self.page_remove_archive._option_trigger_remove_file)
+        publisher_saves.add_control('page_remove_archive._sharkdata_remove_dataset_directory', self.page_remove_archive._sharkdata_remove_dataset_directory)
 
-    def import_saves(self):
-        if not SAVES_PATH.exists():
-            print('NO')
-            return
-        with open(SAVES_PATH) as fid:
-            data = yaml.safe_load(fid)
-        for key, value in data.items():
-            parts = key.split('.')
-            if not hasattr(self, parts[0]):
-                continue
-            attr = getattr(self, parts[0])
-            for part in parts[1:]:
-                if not hasattr(attr, part):
-                    continue
-                attr = getattr(attr, part)
-            attr.value = value
-            attr.update()
+        publisher_saves.add_control('page_config._option_copy_config_to_sharkdata', self.page_config._option_copy_config_to_sharkdata)
+        publisher_saves.add_control('page_config._option_trigger_config_import', self.page_config._option_trigger_config_import)
+        publisher_saves.add_control('page_config._sharkdata_config_directory', self.page_config._sharkdata_config_directory)
+
+# def export_saves(self):
+    #     data = {}
+    #     for key, cont in self._saves.items():
+    #         data[key] = cont.value
+    #     with open(SAVES_PATH, 'w') as fid:
+    #         yaml.safe_dump(data, fid)
+    #
+    # def import_saves(self):
+    #     if not SAVES_PATH.exists():
+    #         print('NO')
+    #         return
+    #     with open(SAVES_PATH) as fid:
+    #         data = yaml.safe_load(fid)
+    #     for key, value in data.items():
+    #         parts = key.split('.')
+    #         if not hasattr(self, parts[0]):
+    #             continue
+    #         attr = getattr(self, parts[0])
+    #         for part in parts[1:]:
+    #             if not hasattr(attr, part):
+    #                 continue
+    #             attr = getattr(attr, part)
+    #         attr.value = value
+    #         attr.update()
 
 
 
