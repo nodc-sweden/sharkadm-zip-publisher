@@ -21,8 +21,6 @@ class ArchiveRemover(Trigger):
 
         self._remove_names = []
 
-        # if not all(list(self._config.values())):
-        #     raise Exception('Missing input parameters!')
         super().__init__(**self._config)
 
     def create_remove_file(self):

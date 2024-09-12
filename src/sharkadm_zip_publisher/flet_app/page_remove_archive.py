@@ -1,5 +1,4 @@
 import pathlib
-import time
 
 import flet as ft
 
@@ -74,29 +73,6 @@ class PageRemoveArchive(ft.UserControl):
 
         return ft.Row([self._textfield_zip_to_remove, btn])
 
-    # def _get_select_sharkdata_remove_dataset_directory_row(self) -> ft.Row:
-    #
-    #     self._sharkdata_remove_dataset_directory = ft.Text()
-    #
-    #     pick_sharkdata_remove_dataset_directory_dialog = ft.FilePicker(on_result=self.on_select_sharkdata_remove_dataset_import_directory)
-    #
-    #     self.page.overlay.append(pick_sharkdata_remove_dataset_directory_dialog)
-    #     self._pick_sharkdata_remove_dataset_directory_button = ft.ElevatedButton(
-    #                     "Välj mapp där du vill lägga remove.txt",
-    #                     icon=ft.icons.UPLOAD_FILE,
-    #                     on_click=lambda _: pick_sharkdata_remove_dataset_directory_dialog.get_directory_path(
-    #                         dialog_title='Välj mapp där du vill lägga remove.txt',
-    #                         initial_directory=self._sharkdata_remove_dataset_directory.value
-    #                     ))
-    #
-    #     row = ft.Row(
-    #             [
-    #                 self._pick_sharkdata_remove_dataset_directory_button,
-    #                 self._sharkdata_remove_dataset_directory
-    #             ]
-    #         )
-    #     return row
-
     def _get_pick_remove_zip_files_button(self) -> ft.Row:
         pick_remove_zip_files_dialog = ft.FilePicker(on_result=self._on_pick_remove_zip_files)
 
@@ -151,12 +127,6 @@ class PageRemoveArchive(ft.UserControl):
         except Exception as e:
             self.main_app.show_dialog(f'Något gick fel:\n{e}')
             raise
-
-    # def on_select_sharkdata_remove_dataset_import_directory(self, e: ft.FilePickerResultEvent) -> None:
-    #     if not e.path:
-    #         return
-    #     self._sharkdata_remove_dataset_directory.value = e.path
-    #     self._sharkdata_remove_dataset_directory.update()
 
     def _on_pick_remove_zip_files(self, e: ft.FilePickerResultEvent) -> None:
         if not e.files:

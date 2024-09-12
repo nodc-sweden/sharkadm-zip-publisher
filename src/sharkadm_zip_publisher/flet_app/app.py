@@ -2,25 +2,20 @@ import os
 import pathlib
 import shutil
 import time
-from typing import Callable
 
 import flet as ft
-import yaml
 from sharkadm import event
 from sharkadm import utils as sharkadm_utils
 
 from sharkadm_zip_publisher.archive_remover import ArchiveRemover
 from sharkadm_zip_publisher.exceptions import ImportNotAvailable
 from sharkadm_zip_publisher.flet_app import utils
-
-from sharkadm_zip_publisher.flet_app.constants import COLOR_DATASETS_MAIN, COLOR_DATASETS_REMOVE
+from sharkadm_zip_publisher.flet_app.constants import COLOR_DATASETS_MAIN
 from sharkadm_zip_publisher.flet_app.page_add_archive import PageAddArchive
+from sharkadm_zip_publisher.flet_app.page_config import PageConfig
 from sharkadm_zip_publisher.flet_app.page_log import PageLog
 from sharkadm_zip_publisher.flet_app.page_remove_archive import PageRemoveArchive
-from sharkadm_zip_publisher.flet_app.page_config import PageConfig
-from sharkadm_zip_publisher.flet_app.utils import fix_url_str
 from sharkadm_zip_publisher.trigger import Trigger
-
 
 USER_DIR = utils.USER_DIR
 SAVES_PATH = utils.SAVES_PATH
@@ -455,15 +450,12 @@ class ZipArchivePublisherGUI:
         publisher_saves.add_control('page_add_archive._option_update_zip_archives', self.page_add_archive._option_update_zip_archives)
         publisher_saves.add_control('page_add_archive._option_copy_zip_archives_to_sharkdata', self.page_add_archive._option_copy_zip_archives_to_sharkdata)
         publisher_saves.add_control('page_add_archive._option_trigger_dataset_import', self.page_add_archive._option_trigger_dataset_import)
-        # publisher_saves.add_control('page_add_archive._sharkdata_dataset_directory', self.page_add_archive._sharkdata_dataset_directory)
 
         publisher_saves.add_control('page_remove_archive._option_create_remove_file', self.page_remove_archive._option_create_remove_file)
         publisher_saves.add_control('page_remove_archive._option_trigger_remove_file', self.page_remove_archive._option_trigger_remove_file)
-        # publisher_saves.add_control('page_remove_archive._sharkdata_remove_dataset_directory', self.page_remove_archive._sharkdata_remove_dataset_directory)
 
         publisher_saves.add_control('page_config._option_copy_config_to_sharkdata', self.page_config._option_copy_config_to_sharkdata)
         publisher_saves.add_control('page_config._option_trigger_config_import', self.page_config._option_trigger_config_import)
-        # publisher_saves.add_control('page_config._sharkdata_config_directory', self.page_config._sharkdata_config_directory)
 
     def _check_paths(self):
         for cont in [self._datasets_directory_dynamic, self._config_directory_dynamic]:

@@ -1,13 +1,11 @@
-import time
-
 import flet as ft
 from sharkadm import utils as sharkadm_utils
 from sharkadm.sharkadm_logger import create_xlsx_report, adm_logger
 
 from sharkadm_zip_publisher.archive_publisher import ArchivePublisher
+from sharkadm_zip_publisher.flet_app import utils
 from sharkadm_zip_publisher.flet_app.constants import COLOR_DATASETS_MAIN
 from sharkadm_zip_publisher.flet_app.saves import publisher_saves
-from sharkadm_zip_publisher.flet_app import utils
 from sharkadm_zip_publisher.zip import ZipPath
 
 
@@ -54,29 +52,6 @@ class PageAddArchive(ft.UserControl):
 
         return col
 
-    # def _get_select_sharkdata_dataset_directory_row(self) -> ft.Row:
-    #
-    #     self._sharkdata_dataset_directory = ft.Text()
-    #
-    #     pick_sharkdata_dataset_directory_dialog = ft.FilePicker(on_result=self.on_select_sharkdata_dataset_import_directory)
-    #
-    #     self.page.overlay.append(pick_sharkdata_dataset_directory_dialog)
-    #     self._pick_sharkdata_dataset_directory_button = ft.ElevatedButton(
-    #                     "Välj mapp där du vill lägga zip-paketen",
-    #                     icon=ft.icons.UPLOAD_FILE,
-    #                     on_click=lambda _: pick_sharkdata_dataset_directory_dialog.get_directory_path(
-    #                         dialog_title='Välj mapp där du vill lägga zip-paketen',
-    #                         initial_directory=self._sharkdata_dataset_directory.value
-    #                     ))
-    #
-    #     row = ft.Row(
-    #             [
-    #                 self._pick_sharkdata_dataset_directory_button,
-    #                 self._sharkdata_dataset_directory
-    #             ]
-    #         )
-    #     return row
-
     def _get_pick_zip_files_button(self) -> ft.Row:
         pick_zip_files_dialog = ft.FilePicker(on_result=self._on_pick_zip_files)
 
@@ -95,12 +70,6 @@ class PageAddArchive(ft.UserControl):
                 ]
             )
         return row
-
-    # def on_select_sharkdata_dataset_import_directory(self, e: ft.FilePickerResultEvent) -> None:
-    #     if not e.path:
-    #         return
-    #     self._sharkdata_dataset_directory.value = e.path
-    #     self._sharkdata_dataset_directory.update()
 
     def _on_pick_zip_files(self, e: ft.FilePickerResultEvent) -> None:
         if not e.files:
@@ -161,7 +130,7 @@ class PageAddArchive(ft.UserControl):
                 import_url=self.main_app.status_url
             )
 
-            for path in self._zip_paths:
+            for path in sorted(self._zip_paths):
                 publisher.set_zip_archive_paths(path)
                 if self._option_update_zip_archives.value:
                     self.main_app.show_info(f'Uppdaterar {path}...')
