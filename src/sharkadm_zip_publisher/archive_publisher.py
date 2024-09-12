@@ -31,7 +31,7 @@ class ArchivePublisher(Trigger):
 
     @property
     def zip_archive_paths(self):
-        return self._updated_zip_archive_paths or self._zip_archive_paths
+        return sorted(self._updated_zip_archive_paths) or sorted(self._zip_archive_paths)
 
     def update_zip_archives(self):
         self._updated_zip_archive_paths = []
@@ -58,7 +58,6 @@ class ArchivePublisher(Trigger):
     @property
     def sharkdata_dataset_directory(self) -> str:
         return self._config['sharkdata_dataset_directory']
-
 
     def _create_transformers(self):
         self._transformers = [

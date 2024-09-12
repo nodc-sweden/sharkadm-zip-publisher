@@ -130,7 +130,7 @@ class PageAddArchive(ft.UserControl):
                 import_url=self.main_app.status_url
             )
 
-            for path in self._zip_paths:
+            for path in sorted(self._zip_paths):
                 publisher.set_zip_archive_paths(path)
                 if self._option_update_zip_archives.value:
                     self.main_app.show_info(f'Uppdaterar {path}...')
