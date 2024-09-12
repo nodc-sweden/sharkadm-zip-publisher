@@ -19,8 +19,8 @@ class ArchivePublisher(Trigger):
             trigger_url=trigger_url,
             status_url=import_url
         )
-        if not all(list(self._config.values())):
-            raise Exception('Missing input parameters!')
+        # if not all(list(self._config.values())):
+        #     raise Exception('Missing input parameters!')
         super().__init__(**self._config)
 
         self._zip_archive_paths: list[pathlib.Path] = []

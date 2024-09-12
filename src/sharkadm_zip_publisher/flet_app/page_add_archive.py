@@ -36,7 +36,6 @@ class PageAddArchive(ft.UserControl):
                                          content=options_column)
         self._go_dataset_button = ft.ElevatedButton(text='Kör', on_click=self._run_zip, bgcolor='green')
         col = ft.Column([
-            self._get_select_sharkdata_dataset_directory_row(),
             ft.Divider(height=9, thickness=3),
             ft.Row([
                 self._get_pick_zip_files_button(),
@@ -55,28 +54,28 @@ class PageAddArchive(ft.UserControl):
 
         return col
 
-    def _get_select_sharkdata_dataset_directory_row(self) -> ft.Row:
-
-        self._sharkdata_dataset_directory = ft.Text()
-
-        pick_sharkdata_dataset_directory_dialog = ft.FilePicker(on_result=self.on_select_sharkdata_dataset_import_directory)
-
-        self.page.overlay.append(pick_sharkdata_dataset_directory_dialog)
-        self._pick_sharkdata_dataset_directory_button = ft.ElevatedButton(
-                        "Välj mapp där du vill lägga zip-paketen",
-                        icon=ft.icons.UPLOAD_FILE,
-                        on_click=lambda _: pick_sharkdata_dataset_directory_dialog.get_directory_path(
-                            dialog_title='Välj mapp där du vill lägga zip-paketen',
-                            initial_directory=self._sharkdata_dataset_directory.value
-                        ))
-
-        row = ft.Row(
-                [
-                    self._pick_sharkdata_dataset_directory_button,
-                    self._sharkdata_dataset_directory
-                ]
-            )
-        return row
+    # def _get_select_sharkdata_dataset_directory_row(self) -> ft.Row:
+    #
+    #     self._sharkdata_dataset_directory = ft.Text()
+    #
+    #     pick_sharkdata_dataset_directory_dialog = ft.FilePicker(on_result=self.on_select_sharkdata_dataset_import_directory)
+    #
+    #     self.page.overlay.append(pick_sharkdata_dataset_directory_dialog)
+    #     self._pick_sharkdata_dataset_directory_button = ft.ElevatedButton(
+    #                     "Välj mapp där du vill lägga zip-paketen",
+    #                     icon=ft.icons.UPLOAD_FILE,
+    #                     on_click=lambda _: pick_sharkdata_dataset_directory_dialog.get_directory_path(
+    #                         dialog_title='Välj mapp där du vill lägga zip-paketen',
+    #                         initial_directory=self._sharkdata_dataset_directory.value
+    #                     ))
+    #
+    #     row = ft.Row(
+    #             [
+    #                 self._pick_sharkdata_dataset_directory_button,
+    #                 self._sharkdata_dataset_directory
+    #             ]
+    #         )
+    #     return row
 
     def _get_pick_zip_files_button(self) -> ft.Row:
         pick_zip_files_dialog = ft.FilePicker(on_result=self._on_pick_zip_files)
@@ -97,11 +96,11 @@ class PageAddArchive(ft.UserControl):
             )
         return row
 
-    def on_select_sharkdata_dataset_import_directory(self, e: ft.FilePickerResultEvent) -> None:
-        if not e.path:
-            return
-        self._sharkdata_dataset_directory.value = e.path
-        self._sharkdata_dataset_directory.update()
+    # def on_select_sharkdata_dataset_import_directory(self, e: ft.FilePickerResultEvent) -> None:
+    #     if not e.path:
+    #         return
+    #     self._sharkdata_dataset_directory.value = e.path
+    #     self._sharkdata_dataset_directory.update()
 
     def _on_pick_zip_files(self, e: ft.FilePickerResultEvent) -> None:
         if not e.files:
@@ -144,7 +143,10 @@ class PageAddArchive(ft.UserControl):
             if not self._zip_paths and any([self._option_update_zip_archives.value, self._option_copy_zip_archives_to_sharkdata.value]):
                 self.main_app.show_dialog('Inga zip-arkiv valda!')
                 return
-            if self._option_trigger_dataset_import.value and not all([self.main_app.trigger_url.strip(), self.main_app.status_url.strip()]):
+            if self._zip_paths and self._option_copy_zip_archives_to_sharkdata.value and not self.main_app.datasets_directory:
+                self.main_app.show_dialog('Inga mapp för att lägga remove.txt vald!')
+                return
+            if self._option_trigger_dataset_import.value and not all([self.main_app.trigger_url, self.main_app.status_url]):
                 self.main_app.show_dialog('Du måste fylla i fälten för URL!')
                 return
 
@@ -154,7 +156,7 @@ class PageAddArchive(ft.UserControl):
             sharkadm_utils.clear_temp_directory()
 
             publisher = ArchivePublisher(
-                sharkdata_dataset_directory=self._sharkdata_dataset_directory.value,
+                sharkdata_dataset_directory=self.main_app.datasets_directory,
                 trigger_url=self.main_app.trigger_url,
                 import_url=self.main_app.status_url
             )
@@ -168,13 +170,10 @@ class PageAddArchive(ft.UserControl):
                     self.main_app.show_info(f'Kopierar {path}...')
                     publisher.copy_archives_to_sharkdata()
             if self._option_trigger_dataset_import.value:
-                self.main_app.show_info(f'Triggar import...')
-                publisher.trigger_import()
-                time.sleep(1)
+                self.main_app.trigger_import()
             self.main_app.show_info(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
             sharkadm_utils.clear_all_in_temp_directory()
             create_xlsx_report(adm_logger, export_directory=utils.USER_DIR)
-            self.main_app.show_dialog(f'Allt klart!')
             self._enable_buttons()
         except Exception as e:
             self.main_app.show_dialog(f'Något gick fel:\n{e}')

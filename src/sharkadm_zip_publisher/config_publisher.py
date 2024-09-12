@@ -23,8 +23,8 @@ class ConfigPublisher(Trigger):
 
         self._config_files = []
 
-        if not all(list(self._config.values())):
-            raise Exception('Missing input parameters!')
+        # if not all(list(self._config.values())):
+        #     raise Exception('Missing input parameters!')
         super().__init__(**self._config)
 
     def copy_config_files_to_sharkdata(self):
