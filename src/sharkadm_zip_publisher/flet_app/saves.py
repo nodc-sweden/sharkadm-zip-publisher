@@ -20,11 +20,15 @@ class PublisherSaves:
 
     @property
     def envs(self) -> list[str]:
-        return ['TEST', 'PROD']
+        return ['TEST', 'PROD', 'LOKALT']
 
     @property
     def save_path(self):
         return pathlib.Path(USER_DIR, f'zip_archive_publisher_saves_{self._env}.yaml').resolve()
+
+    @property
+    def valid_save_paths(self):
+        return [pathlib.Path(USER_DIR, f'zip_archive_publisher_saves_{env}.yaml') for env in self.envs]
 
     def add_control(self, name: str, control: ft.Control):
         self._controls[name] = control

@@ -21,8 +21,8 @@ class ArchiveRemover(Trigger):
 
         self._remove_names = []
 
-        if not all(list(self._config.values())):
-            raise Exception('Missing input parameters!')
+        # if not all(list(self._config.values())):
+        #     raise Exception('Missing input parameters!')
         super().__init__(**self._config)
 
     def create_remove_file(self):
@@ -60,3 +60,16 @@ class ArchiveRemover(Trigger):
 
     def set_remove_names(self, names: list[str]):
         self._remove_names = names
+
+    def get_packages_waiting_to_be_removed(self) -> list[str] | None:
+        """Returns none if no file exits"""
+        if not self.remove_file_path.exists():
+            return None
+        packs = []
+        with open(self.remove_file_path) as fid:
+            for line in fid:
+                striped_line = line.strip()
+                if not striped_line:
+                    continue
+                packs.append(striped_line)
+        return packs

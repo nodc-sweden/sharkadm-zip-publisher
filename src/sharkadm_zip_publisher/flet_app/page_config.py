@@ -18,7 +18,7 @@ class PageConfig(ft.UserControl):
     def build(self):
         self._config_paths_column = ft.Column(tight=True, scroll=ft.ScrollMode.ALWAYS)
         self._option_copy_config_to_sharkdata = ft.Checkbox(label='Kopiera config-filer till "configs"')
-        self._option_trigger_config_import = ft.Checkbox(label='Importera config--filer')
+        self._option_trigger_config_import = ft.Checkbox(label='Importera config-filer')
         options_column = ft.Column([
             self._option_copy_config_to_sharkdata,
             self._option_trigger_config_import
@@ -31,7 +31,7 @@ class PageConfig(ft.UserControl):
 
         self._go_config_button = ft.ElevatedButton(text='Kör', on_click=self._run_config, bgcolor='green')
         col = ft.Column([
-            self._get_select_sharkdata_config_directory_row(),
+            # self._get_select_sharkdata_config_directory_row(),
             ft.Divider(height=9, thickness=3),
             ft.Row([
                 self._get_pick_config_files_button(),
@@ -50,28 +50,28 @@ class PageConfig(ft.UserControl):
 
         return col
 
-    def _get_select_sharkdata_config_directory_row(self) -> ft.Row:
-
-        self._sharkdata_config_directory = ft.Text()
-
-        pick_sharkdata_config_directory_dialog = ft.FilePicker(on_result=self.on_select_sharkdata_config_import_directory)
-
-        self.page.overlay.append(pick_sharkdata_config_directory_dialog)
-        self._pick_sharkdata_config_directory_button = ft.ElevatedButton(
-                        "Välj mapp där du vill lägga config-filerna",
-                        icon=ft.icons.UPLOAD_FILE,
-                        on_click=lambda _: pick_sharkdata_config_directory_dialog.get_directory_path(
-                            dialog_title='Välj mapp där du vill lägga config-filerna',
-                            initial_directory=self._sharkdata_config_directory.value
-                        ))
-
-        row = ft.Row(
-                [
-                    self._pick_sharkdata_config_directory_button,
-                    self._sharkdata_config_directory
-                ]
-            )
-        return row
+    # def _get_select_sharkdata_config_directory_row(self) -> ft.Row:
+    #
+    #     self._sharkdata_config_directory = ft.Text()
+    #
+    #     pick_sharkdata_config_directory_dialog = ft.FilePicker(on_result=self.on_select_sharkdata_config_import_directory)
+    #
+    #     self.page.overlay.append(pick_sharkdata_config_directory_dialog)
+    #     self._pick_sharkdata_config_directory_button = ft.ElevatedButton(
+    #                     "Välj mapp där du vill lägga config-filerna",
+    #                     icon=ft.icons.UPLOAD_FILE,
+    #                     on_click=lambda _: pick_sharkdata_config_directory_dialog.get_directory_path(
+    #                         dialog_title='Välj mapp där du vill lägga config-filerna',
+    #                         initial_directory=self._sharkdata_config_directory.value
+    #                     ))
+    #
+    #     row = ft.Row(
+    #             [
+    #                 self._pick_sharkdata_config_directory_button,
+    #                 self._sharkdata_config_directory
+    #             ]
+    #         )
+    #     return row
 
     def _delete_config_path(self, path_control: ConfigPath):
         self._config_paths_column.controls.remove(path_control)
@@ -111,11 +111,11 @@ class PageConfig(ft.UserControl):
         self._config_paths_column.controls = controls
         self.update()
 
-    def on_select_sharkdata_config_import_directory(self, e: ft.FilePickerResultEvent) -> None:
-        if not e.path:
-            return
-        self._sharkdata_config_directory.value = e.path
-        self._sharkdata_config_directory.update()
+    # def on_select_sharkdata_config_import_directory(self, e: ft.FilePickerResultEvent) -> None:
+    #     if not e.path:
+    #         return
+    #     self._sharkdata_config_directory.value = e.path
+    #     self._sharkdata_config_directory.update()
 
     def _run_config(self, *args):
         try:
@@ -126,8 +126,8 @@ class PageConfig(ft.UserControl):
             if not self._config_paths and self._option_copy_config_to_sharkdata.value:
                 self.main_app.show_dialog('Inga config-filer valda!')
                 return
-            if self._option_trigger_config_import.value and not all([self.main_app.trigger_url.value.strip(),
-                                                                      self.main_app.status_url.value.strip()]):
+            if self._option_trigger_config_import.value and not all([self.main_app.trigger_url,
+                                                                      self.main_app.status_url]):
                 self.main_app.show_dialog('Du måste fylla i fälten för URL!')
                 return
             self._disable_buttons()
@@ -136,7 +136,7 @@ class PageConfig(ft.UserControl):
             sharkadm_utils.clear_temp_directory()
 
             publisher = ConfigPublisher(
-                sharkdata_config_directory=self._sharkdata_config_directory.value,
+                sharkdata_config_directory=self.main_app.config_directory,
                 trigger_url=self.main_app.trigger_url,
                 import_url=self.main_app.status_url
             )
@@ -146,15 +146,12 @@ class PageConfig(ft.UserControl):
                 publisher.copy_config_files_to_sharkdata()
 
             if self._option_trigger_config_import.value:
-                self.main_app.show_info(f'Triggar import...')
-                publisher.trigger_import()
-                time.sleep(1)
-            self.main_app.show_dialog(f'Allt klart!')
+                self.main_app.trigger_import()
+            self.main_app.show_dialog('Allt klart!')
             self._enable_buttons()
         except Exception as e:
             self.main_app.show_dialog(f'Något gick fel:\n{e}')
             raise
-
 
     def _enable_buttons(self):
         for btn in [
