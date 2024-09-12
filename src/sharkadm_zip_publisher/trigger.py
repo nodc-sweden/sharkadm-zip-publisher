@@ -22,6 +22,7 @@ class Trigger:
 
     @property
     def _import_status_is_available(self):
+        print(f'{requests.get(self.status_url).content.decode()=}')
         if requests.get(self.status_url).content.decode() == 'AVAILABLE':
             return True
         return False

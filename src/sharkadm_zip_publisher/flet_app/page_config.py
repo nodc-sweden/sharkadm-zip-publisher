@@ -136,7 +136,7 @@ class PageConfig(ft.UserControl):
             sharkadm_utils.clear_temp_directory()
 
             publisher = ConfigPublisher(
-                sharkdata_config_directory=self.main_app.datasets_directory,
+                sharkdata_config_directory=self.main_app.config_directory,
                 trigger_url=self.main_app.trigger_url,
                 import_url=self.main_app.status_url
             )
@@ -152,7 +152,6 @@ class PageConfig(ft.UserControl):
         except Exception as e:
             self.main_app.show_dialog(f'Något gick fel:\n{e}')
             raise
-
 
     def _enable_buttons(self):
         for btn in [

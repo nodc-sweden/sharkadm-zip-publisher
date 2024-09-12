@@ -10,6 +10,7 @@ from sharkadm import event
 from sharkadm import utils as sharkadm_utils
 
 from sharkadm_zip_publisher.archive_remover import ArchiveRemover
+from sharkadm_zip_publisher.exceptions import ImportNotAvailable
 from sharkadm_zip_publisher.flet_app import utils
 
 from sharkadm_zip_publisher.flet_app.constants import COLOR_DATASETS_MAIN, COLOR_DATASETS_REMOVE
@@ -339,7 +340,7 @@ class ZipArchivePublisherGUI:
         rem = ArchiveRemover(sharkdata_datasets_directory=self.datasets_directory)
         packs = rem.get_packages_waiting_to_be_removed()
         if not packs and on_remove:
-            self.show_dialog('Det finns info om vad som ska tas bort!')
+            self.show_dialog('Det finns ingen info om vad som ska tas bort!')
             return
         if packs:
             msg = f'Det finns en remove.txt fil i datasetmappen med {len(packs)} rader. Vill du fortfarande trigga APIet?'
@@ -356,15 +357,30 @@ class ZipArchivePublisherGUI:
                 ]
             )
             self.page.open(self._trigger_dlg)
+        else:
+            self._trigger_import()
 
     def _trigger_import(self, event=None):
+        t0 = time.time()
+        max_time = 10
         self.show_info(f'Triggar import...')
         trig = Trigger(trigger_url=self.trigger_url, status_url=self.status_url)
-        trig.trigger_import()
+        # time.sleep(0.2)
         rem = ArchiveRemover(sharkdata_datasets_directory=self.datasets_directory)
         self._disable_on_trigger_import()
-        while rem.remove_file_path.exists():
-            time.sleep(0.2)
+        while True:
+            try:
+                trig.trigger_import()
+                while rem.remove_file_path.exists():
+                    time.sleep(0.2)
+                break
+            except ImportNotAvailable:
+                self.show_info('Triggern är inte tillgänglig. Försöker igen...')
+                time.sleep(0.2)
+                if (time.time() - t0) > max_time:
+                    self.show_info(f'Triggern är inte tillgänglig. Försökte i {max_time} sekunder men nu ger jag upp!')
+                    self._enable_on_trigger_import()
+                    return
         self._enable_on_trigger_import()
         self.show_info(f'Importen/borttagningen är klar!')
 
@@ -373,16 +389,18 @@ class ZipArchivePublisherGUI:
         self._tabs.update()
         self._trigger_btn.disabled = True
         self._trigger_btn.update()
-        self._trigger_dlg.disabled = True
-        self._trigger_dlg.update()
+        if hasattr(self, '_trigger_dlg'):
+            self._trigger_dlg.disabled = True
+            self._trigger_dlg.update()
 
     def _enable_on_trigger_import(self):
         self._tabs.disabled = False
         self._tabs.update()
         self._trigger_btn.disabled = False
         self._trigger_btn.update()
-        self._trigger_dlg.disabled = False
-        self._trigger_dlg.update()
+        if hasattr(self, '_trigger_dlg'):
+            self._trigger_dlg.disabled = False
+            self._trigger_dlg.update()
 
     @property
     def trigger_url(self) -> str:
