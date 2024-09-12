@@ -147,6 +147,7 @@ class PageConfig(ft.UserControl):
 
             if self._option_trigger_config_import.value:
                 self.main_app.trigger_import()
+            self.main_app.show_dialog('Allt klart!')
             self._enable_buttons()
         except Exception as e:
             self.main_app.show_dialog(f'Något gick fel:\n{e}')

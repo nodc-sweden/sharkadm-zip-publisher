@@ -175,6 +175,7 @@ class PageAddArchive(ft.UserControl):
             sharkadm_utils.clear_all_in_temp_directory()
             create_xlsx_report(adm_logger, export_directory=utils.USER_DIR)
             self._enable_buttons()
+            self.main_app.show_dialog('Allt klart!')
         except Exception as e:
             self.main_app.show_dialog(f'Något gick fel:\n{e}')
             raise

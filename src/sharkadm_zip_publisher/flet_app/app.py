@@ -14,6 +14,7 @@ from sharkadm_zip_publisher.flet_app import utils
 
 from sharkadm_zip_publisher.flet_app.constants import COLOR_DATASETS_MAIN, COLOR_DATASETS_REMOVE
 from sharkadm_zip_publisher.flet_app.page_add_archive import PageAddArchive
+from sharkadm_zip_publisher.flet_app.page_log import PageLog
 from sharkadm_zip_publisher.flet_app.page_remove_archive import PageRemoveArchive
 from sharkadm_zip_publisher.flet_app.page_config import PageConfig
 from sharkadm_zip_publisher.flet_app.utils import fix_url_str
@@ -25,7 +26,6 @@ SAVES_PATH = utils.SAVES_PATH
 
 from sharkadm_zip_publisher.flet_app.saves import publisher_saves
 from sharkadm_zip_publisher.flet_app import saves
-
 
 
 class ZipArchivePublisherGUI:
@@ -91,8 +91,9 @@ class ZipArchivePublisherGUI:
         self.page_add_archive = PageAddArchive(self)
         self.page_remove_archive = PageRemoveArchive(self)
         self.page_config = PageConfig(self)
+        self.page_log = PageLog(self)
 
-        t = ft.Tabs(
+        self._tabs = ft.Tabs(
             selected_index=1,
             animation_duration=300,
             tabs=[
@@ -111,18 +112,23 @@ class ZipArchivePublisherGUI:
                     icon=ft.icons.DELETE_OUTLINE,
                     content=self.page_remove_archive,
                 ),
+                ft.Tab(
+                    text="Log",
+                    icon=ft.icons.EDIT_DOCUMENT,
+                    content=self.page_log,
+                ),
             ],
-            expand=1,
+            expand=1, expand_loose=True
         )
 
-        t.selected_index = 0
+        self._tabs.selected_index = 0
 
         self.page.controls.append(ft.Row([
             self._get_option_column(),
             self._get_paths_row(),
         ]))
         self.page.controls.append(ft.Divider(height=9, thickness=3, color=COLOR_DATASETS_MAIN))
-        self.page.controls.append(t)
+        self.page.controls.append(self._tabs)
         self.page.controls.append(self._info_text)
         self.update_page()
 
@@ -339,23 +345,44 @@ class ZipArchivePublisherGUI:
             msg = f'Det finns en remove.txt fil i datasetmappen med {len(packs)} rader. Vill du fortfarande trigga APIet?'
             if on_remove:
                 msg = f'Är du säker på att du vill ta bort {len(packs)} paket?'
-            dlg = ft.AlertDialog(
+            self._trigger_dlg = ft.AlertDialog(
                 modal=True,
                 title=ft.Text('WARNING: remove.txt'),
                 content=ft.Text(msg),
                 actions=[
                     ft.TextButton('Ja', on_click=self._trigger_import),
-                    ft.TextButton('Nej', on_click=lambda x: self.page.close(dlg)),
+                    ft.TextButton('Nej', on_click=lambda x: self.page.close(self._trigger_dlg)),
                     ft.TextButton('Öppna filen', on_click=lambda x: sharkadm_utils.open_file_with_default_program(rem.remove_file_path)),
                 ]
             )
-            self.page.open(dlg)
+            self.page.open(self._trigger_dlg)
 
     def _trigger_import(self, event=None):
         self.show_info(f'Triggar import...')
         trig = Trigger(trigger_url=self.trigger_url, status_url=self.status_url)
         trig.trigger_import()
-        self.show_dialog(f'Importen har triggats!')
+        rem = ArchiveRemover(sharkdata_datasets_directory=self.datasets_directory)
+        self._disable_on_trigger_import()
+        while rem.remove_file_path.exists():
+            time.sleep(0.2)
+        self._enable_on_trigger_import()
+        self.show_info(f'Importen/borttagningen är klar!')
+
+    def _disable_on_trigger_import(self):
+        self._tabs.disabled = True
+        self._tabs.update()
+        self._trigger_btn.disabled = True
+        self._trigger_btn.update()
+        self._trigger_dlg.disabled = True
+        self._trigger_dlg.update()
+
+    def _enable_on_trigger_import(self):
+        self._tabs.disabled = False
+        self._tabs.update()
+        self._trigger_btn.disabled = False
+        self._trigger_btn.update()
+        self._trigger_dlg.disabled = False
+        self._trigger_dlg.update()
 
     @property
     def trigger_url(self) -> str:
@@ -378,6 +405,7 @@ class ZipArchivePublisherGUI:
         return self._config_directory_dynamic.value.strip()
 
     def show_dialog(self, text: str):
+        self.page_log.add_text(text)
         self._dialog_text.value = text
         self._open_dlg()
 
@@ -387,9 +415,11 @@ class ZipArchivePublisherGUI:
         self.update_page()
 
     def _on_log_workflow(self, msg: str) -> None:
+        self._add_to_log_file(msg)
         self.show_info(msg)
 
     def show_info(self, msg: str = '') -> None:
+        self.page_log.add_text(msg)
         self._info_text.value = msg
         self._info_text.update()
 
