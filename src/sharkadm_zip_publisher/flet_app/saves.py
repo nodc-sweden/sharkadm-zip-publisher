@@ -1,7 +1,8 @@
-from sharkadm import utils
 import pathlib
-import yaml
+
 import flet as ft
+import yaml
+from sharkadm import utils
 
 USER_DIR = utils.get_root_directory() / 'zip_archive_publisher'
 USER_DIR.mkdir(parents=True, exist_ok=True)
@@ -69,10 +70,6 @@ class PublisherSaves:
                     continue
                 attr = getattr(attr, part)
             attr.value = ''
-            # try:
-            #     attr.value = ''
-            # except:
-            #     attr.value = value
             attr.update()
 
 
