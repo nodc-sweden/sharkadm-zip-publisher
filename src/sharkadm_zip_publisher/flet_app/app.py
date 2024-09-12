@@ -1,5 +1,6 @@
 import os
 import pathlib
+import shutil
 import time
 from typing import Callable
 
@@ -23,6 +24,8 @@ USER_DIR = utils.USER_DIR
 SAVES_PATH = utils.SAVES_PATH
 
 from sharkadm_zip_publisher.flet_app.saves import publisher_saves
+from sharkadm_zip_publisher.flet_app import saves
+
 
 
 class ZipArchivePublisherGUI:
@@ -247,14 +250,62 @@ class ZipArchivePublisherGUI:
             options=dd_options,
             on_change=self._on_change_env
         )
+
+
         self._env_dropdown.value = 'TEST'
 
         self._trigger_btn = ft.ElevatedButton(text='Trigga import', on_click=self.trigger_import, bgcolor='green')
 
         return ft.Column([
+            self._get_import_config_button(),
             self._env_dropdown,
             self._trigger_btn
         ])
+
+    def _get_import_config_button(self) -> ft.Row:
+        pick_config_files_dialog = ft.FilePicker(on_result=self._on_pick_config_files)
+
+        self.page.overlay.append(pick_config_files_dialog)
+        self._pick_config_files_button = ft.TextButton(
+                        "Importera configfil(er)",
+                        # icon=ft.icons.UPLOAD_FILE,
+                        on_click=lambda _: pick_config_files_dialog.pick_files(
+                            allow_multiple=True,
+                            allowed_extensions=['yaml']
+                        ))
+
+        row = ft.Row(
+                [
+                    self._pick_config_files_button,
+                ]
+            )
+        return row
+
+    def _on_pick_config_files(self, e: ft.FilePickerResultEvent) -> None:
+        if not e.files:
+            return
+        valid_paths = []
+        invalid_paths = []
+        pub_saves = saves.PublisherSaves()
+        valid_mapping = dict((path.stem.lower(), path) for path in pub_saves.valid_save_paths)
+        for file in e.files:
+            source_path = pathlib.Path(file.path)
+            if not valid_mapping.get(source_path.stem.lower()):
+                invalid_paths.append(source_path)
+                continue
+            valid_paths.append(source_path)
+            shutil.copy2(source_path, valid_mapping[source_path.stem.lower()])
+
+        self._on_change_env()
+        valid_str = '\n'.join([str(p) for p in valid_paths])
+        invalid_str = '\n'.join([str(p) for p in invalid_paths])
+        if not valid_paths:
+            msg = f'Inga valda filer är godkända configfiler: \n{invalid_str}'
+        elif invalid_paths:
+            msg = f'Godkända configfiler som kopierats:\n{valid_str}\n\nIcke godkända configfiler:\n{invalid_str}'
+        else:
+            msg = f'Följande configfiler har kopierats:\n{valid_str}'
+        self.show_dialog(msg)
 
     def _on_change_env(self, event=None):
         value = self._env_dropdown.value
