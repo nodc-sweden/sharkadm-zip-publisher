@@ -134,6 +134,7 @@ class ZipArchivePublisherGUI:
             ft.Text('URL som triggar importen:'),
             ft.Text('URL som kollar status på importen:'),
             ft.Text('Mapp för dataset:'),
+            ft.Text('Mapp för zip-paket:'),
             ft.Text('Mapp för configfiler:'),
         ])
 
@@ -141,6 +142,7 @@ class ZipArchivePublisherGUI:
             ft.Text(),
             ft.Text(),
             ft.ElevatedButton(text='Öppna mapp', on_click=self._open_datasets_directory),
+            ft.ElevatedButton(text='Öppna mapp', on_click=self._open_zip_directory),
             ft.ElevatedButton(text='Öppna mapp', on_click=self._open_config_directory)
         ])
 
@@ -148,15 +150,18 @@ class ZipArchivePublisherGUI:
         self._status_url = ft.Text()
 
         self._datasets_directory = ft.Text()
+        self._zip_directory = ft.Text()
         self._config_directory = ft.Text()
 
         self._static_variable_paths_column = ft.Column([
             self._datasets_directory,
+            self._zip_directory,
             self._config_directory
         ])
 
         self._dynamic_variable_paths_column = ft.Column([
             self._get_dataset_directory_row(),
+            self._get_zip_directory_row(),
             self._get_config_directory_row(),
         ], visible=False)
 
@@ -200,11 +205,40 @@ class ZipArchivePublisherGUI:
         )
         return row
 
+    def _get_zip_directory_row(self) -> ft.Row:
+
+        self._zip_directory_dynamic = ft.Text()
+
+        pick_zip_directory_dialog = ft.FilePicker(on_result=self.on_select_zip_directory)
+
+        self.page.overlay.append(pick_zip_directory_dialog)
+        self._pick_zip_directory_button = ft.ElevatedButton(
+            'Välj mapp för "lokala" zip-paket',
+            icon=ft.icons.UPLOAD_FILE,
+            on_click=lambda _: pick_zip_directory_dialog.get_directory_path(
+                dialog_title='Välj mapp för "lokala" zip-paket',
+                initial_directory=self._zip_directory_dynamic.value
+            ))
+
+        row = ft.Row(
+            [
+                self._zip_directory_dynamic,
+                self._pick_zip_directory_button,
+            ]
+        )
+        return row
+
     def on_select_dataset_directory(self, e: ft.FilePickerResultEvent) -> None:
         if not e.path:
             return
         self._datasets_directory_dynamic.value = e.path
         self._datasets_directory_dynamic.update()
+
+    def on_select_zip_directory(self, e: ft.FilePickerResultEvent) -> None:
+        if not e.path:
+            return
+        self._zip_directory_dynamic.value = e.path
+        self._zip_directory_dynamic.update()
 
     def _get_config_directory_row(self) -> ft.Row:
 
@@ -239,6 +273,11 @@ class ZipArchivePublisherGUI:
         if not self.datasets_directory:
             return
         sharkadm_utils.open_directory(self.datasets_directory)
+
+    def _open_zip_directory(self, event=None):
+        if not self.zip_directory:
+            return
+        sharkadm_utils.open_directory(self.zip_directory)
 
     def _open_config_directory(self, event=None):
         if not self.config_directory:
@@ -358,10 +397,13 @@ class ZipArchivePublisherGUI:
     def _trigger_import(self, event=None):
         t0 = time.time()
         max_time = 10
+        self.page.close(self._trigger_dlg)
         self.show_info(f'Triggar import...')
         trig = Trigger(trigger_url=self.trigger_url, status_url=self.status_url)
         # time.sleep(0.2)
-        rem = ArchiveRemover(sharkdata_datasets_directory=self.datasets_directory)
+        rem = ArchiveRemover(sharkdata_datasets_directory=self.datasets_directory,
+                             zip_directory=self.zip_directory, )
+        packs = rem.get_packages_waiting_to_be_removed()
         self._disable_on_trigger_import()
         while True:
             try:
@@ -376,6 +418,9 @@ class ZipArchivePublisherGUI:
                     self.show_info(f'Triggern är inte tillgänglig. Försökte i {max_time} sekunder men nu ger jag upp!')
                     self._enable_on_trigger_import()
                     return
+        if packs:
+            self.show_info(f'Tar bort gamla paket under: {self.zip_directory}!')
+            rem.remove_old_packs_in_zip_directory(packs)
         self._enable_on_trigger_import()
         self.show_info(f'Importen/borttagningen är klar!')
 
@@ -417,6 +462,12 @@ class ZipArchivePublisherGUI:
             return self._config_directory.value.strip()
         return self._config_directory_dynamic.value.strip()
 
+    @property
+    def zip_directory(self) -> str:
+        if self._static_variable_paths_column.visible:
+            return self._zip_directory.value.strip()
+        return self._zip_directory_dynamic.value.strip()
+
     def show_dialog(self, text: str):
         self.page_log.add_text(text)
         self._dialog_text.value = text
@@ -442,9 +493,11 @@ class ZipArchivePublisherGUI:
         publisher_saves.add_control('_status_url', self._status_url)
 
         publisher_saves.add_control('_datasets_directory', self._datasets_directory)
+        publisher_saves.add_control('_zip_directory', self._zip_directory)
         publisher_saves.add_control('_config_directory', self._config_directory)
 
         publisher_saves.add_control('_datasets_directory_dynamic', self._datasets_directory_dynamic)
+        publisher_saves.add_control('_zip_directory_dynamic', self._zip_directory_dynamic)
         publisher_saves.add_control('_config_directory_dynamic', self._config_directory_dynamic)
 
         publisher_saves.add_control('page_add_archive._option_update_zip_archives', self.page_add_archive._option_update_zip_archives)

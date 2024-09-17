@@ -126,6 +126,7 @@ class PageAddArchive(ft.UserControl):
 
             publisher = ArchivePublisher(
                 sharkdata_dataset_directory=self.main_app.datasets_directory,
+                zip_directory=self.main_app.zip_directory,
                 trigger_url=self.main_app.trigger_url,
                 import_url=self.main_app.status_url
             )

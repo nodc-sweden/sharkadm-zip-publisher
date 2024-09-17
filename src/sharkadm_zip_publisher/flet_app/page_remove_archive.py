@@ -123,7 +123,7 @@ class PageRemoveArchive(ft.UserControl):
             if self._option_trigger_remove_file.value:
                 self.main_app.trigger_import(on_remove=True)
             self._enable_buttons()
-            self.main_app.show_dialog('Allt klart!')
+            # self.main_app.show_dialog('Allt klart!')
         except Exception as e:
             self.main_app.show_dialog(f'Något gick fel:\n{e}')
             raise
