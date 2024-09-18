@@ -105,6 +105,9 @@ class ArchivePublisher(Trigger):
             transformers.AddSwedishSamplingLaboratory(),
             transformers.AddSwedishAnalyticalLaboratory(),
             transformers.AddSwedishReportingInstitute(),
+            transformers.AddReportedDates(),
+            transformers.AddSampleDate(),
+            transformers.CreateFakeFullDates()
         ]
 
     def _run_transformers(self):
