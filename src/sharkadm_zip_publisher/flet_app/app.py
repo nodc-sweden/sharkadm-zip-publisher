@@ -397,7 +397,8 @@ class ZipArchivePublisherGUI:
     def _trigger_import(self, event=None):
         t0 = time.time()
         max_time = 10
-        self.page.close(self._trigger_dlg)
+        if hasattr(self, '_trigger_dlg'):
+            self.page.close(self._trigger_dlg)
         self.show_info(f'Triggar import...')
         trig = Trigger(trigger_url=self.trigger_url, status_url=self.status_url)
         # time.sleep(0.2)

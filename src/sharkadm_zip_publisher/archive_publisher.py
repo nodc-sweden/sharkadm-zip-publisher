@@ -106,6 +106,7 @@ class ArchivePublisher(Trigger):
             transformers.AddSwedishAnalyticalLaboratory(),
             transformers.AddSwedishReportingInstitute(),
             transformers.AddReportedDates(),
+            transformers.AddSampleDate(),
             transformers.CreateFakeFullDates()
         ]
 
