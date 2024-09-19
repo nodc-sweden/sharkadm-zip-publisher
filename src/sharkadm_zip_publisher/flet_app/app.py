@@ -14,6 +14,7 @@ from sharkadm_zip_publisher.flet_app.constants import COLOR_DATASETS_MAIN
 from sharkadm_zip_publisher.flet_app.page_add_archive import PageAddArchive
 from sharkadm_zip_publisher.flet_app.page_config import PageConfig
 from sharkadm_zip_publisher.flet_app.page_log import PageLog
+from sharkadm_zip_publisher.flet_app.page_transformers import PageTransformers
 from sharkadm_zip_publisher.flet_app.page_remove_archive import PageRemoveArchive
 from sharkadm_zip_publisher.trigger import Trigger
 
@@ -88,6 +89,7 @@ class ZipArchivePublisherGUI:
         self.page_remove_archive = PageRemoveArchive(self)
         self.page_config = PageConfig(self)
         self.page_log = PageLog(self)
+        self.page_transformers = PageTransformers(self)
 
         self._tabs = ft.Tabs(
             selected_index=1,
@@ -112,6 +114,11 @@ class ZipArchivePublisherGUI:
                     text="Log",
                     icon=ft.icons.EDIT_DOCUMENT,
                     content=self.page_log,
+                ),
+                ft.Tab(
+                    text="Transformationer",
+                    icon=ft.icons.TRANSFORM,
+                    content=self.page_transformers,
                 ),
             ],
             expand=1, expand_loose=True
