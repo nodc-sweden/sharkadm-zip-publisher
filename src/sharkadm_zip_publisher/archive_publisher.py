@@ -95,6 +95,10 @@ class ArchivePublisher(Trigger):
             shutil.copy2(source_path, target_path)
 
     @property
+    def transformers(self) -> list[transformers.Transformer]:
+        return self._transformers
+
+    @property
     def sharkdata_dataset_directory(self) -> str:
         return self._config['sharkdata_dataset_directory']
 
@@ -105,6 +109,7 @@ class ArchivePublisher(Trigger):
             transformers.AddSwedishSamplingLaboratory(),
             transformers.AddSwedishAnalyticalLaboratory(),
             transformers.AddSwedishReportingInstitute(),
+            transformers.FixTimeFormat(),
             transformers.AddReportedDates(),
             transformers.AddSampleDate(),
             transformers.CreateFakeFullDates()
