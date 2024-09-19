@@ -1,6 +1,6 @@
 [project]
 name = "sharkadm-zip-publisher"
-version = "0.4.0"
+version = "0.5.0"
 description = "Python application to modify/enrich and publish Data host zip packages"
 authors = [
     {name = "Magnus Wenzer", email = "magnus.wenzer@smhi.se"},
@@ -8,7 +8,7 @@ authors = [
 dependencies = [
     "flet>=0.24.1",
     "nodc-codes @ git+https://github.com/nodc-sweden/nodc-codes.git@v0.2.0",
-    "sharkadm @ git+https://github.com/nodc-sweden/SHARKadm.git@v0.2.0",
+    "sharkadm @ git+https://github.com/nodc-sweden/SHARKadm.git@v0.3.0",
 ]
 requires-python = "<3.14,>=3.11"
 readme = "README.md"
