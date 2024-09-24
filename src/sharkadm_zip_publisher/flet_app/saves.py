@@ -21,7 +21,7 @@ class PublisherSaves:
 
     @property
     def envs(self) -> list[str]:
-        return ['TEST', 'PROD', 'LOKALT']
+        return ['TEST', 'UTV', 'PROD', 'LOKALT']
 
     @property
     def save_path(self):
