@@ -299,7 +299,6 @@ class ZipArchivePublisherGUI:
             on_change=self._on_change_env
         )
 
-
         self._env_dropdown.value = 'TEST'
 
         self._trigger_btn = ft.ElevatedButton(text='Trigga import', on_click=self.trigger_import, bgcolor='green')
