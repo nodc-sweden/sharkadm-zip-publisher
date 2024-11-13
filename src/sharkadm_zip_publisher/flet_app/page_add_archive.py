@@ -148,4 +148,5 @@ class PageAddArchive(ft.UserControl):
             self.main_app.show_dialog('Allt klart!')
         except Exception as e:
             self.main_app.show_dialog(f'Något gick fel:\n{e}')
+            self._enable_buttons()
             raise

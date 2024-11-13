@@ -485,9 +485,15 @@ class ZipArchivePublisherGUI:
         self._dlg.open = True
         self.update_page()
 
-    def _on_log_workflow(self, msg: str) -> None:
-        self._add_to_log_file(msg)
-        self.show_info(msg)
+    def _on_log_workflow(self, data: dict) -> None:
+        level = data.get('level')
+        if level == 'debug':
+            return
+        if level in ['warning', 'error']:
+            level = level.upper()
+        text = f'{level}: {data.get("msg")}'
+        self._add_to_log_file(text)
+        self.show_info(text)
 
     def show_info(self, msg: str = '') -> None:
         self.page_log.add_text(msg)
