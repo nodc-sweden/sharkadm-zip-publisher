@@ -113,7 +113,8 @@ class ArchivePublisher(Trigger):
             transformers.AddReportedDates(),
             transformers.AddVisitDateFromObservationDate(),
             transformers.AddSampleDate(),
-            transformers.CreateFakeFullDates()
+            transformers.CreateFakeFullDates(),
+            transformers.ManualSealPathology(),
         ]
 
     def _run_transformers(self):
