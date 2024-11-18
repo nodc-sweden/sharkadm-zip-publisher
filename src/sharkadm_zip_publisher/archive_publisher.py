@@ -111,10 +111,10 @@ class ArchivePublisher(Trigger):
             transformers.AddSwedishReportingInstitute(),
             transformers.FixTimeFormat(),
             transformers.AddReportedDates(),
-            transformers.AddVisitDateFromObservationDate(),
             transformers.AddSampleDate(),
             transformers.CreateFakeFullDates(),
             transformers.ManualSealPathology(),
+            transformers.ManualHarbourPorpoise()
         ]
 
     def _run_transformers(self):
