@@ -53,13 +53,16 @@ class ArchivePublisher(Trigger):
     def zip_archive_paths(self):
         return sorted(self._updated_zip_archive_paths) or sorted(self._zip_archive_paths)
 
-    def update_zip_archives(self):
+    def update_zip_archives(self) -> dict:
         self._updated_zip_archive_paths = []
+        publish_not_allowed = []
         for path in self._zip_archive_paths:
             data_holder = get_zip_archive_data_holder(path)
             if data_holder.data_type in SKIP_DATA_TYPES:
                 adm_logger.log_workflow(f'Not allowed to publish package of data type {data_holder.data_type}: {path.name}',
                                         level=adm_logger.INFO)
+                publish_not_allowed.append(path.name)
+
                 continue
             self._controller.set_data_holder(data_holder)
             self._run_transformers()
@@ -74,6 +77,9 @@ class ArchivePublisher(Trigger):
             data_holder.remove_received_data_directory()
             rezipped_archive_path = self._zip_directory(data_holder.unzipped_archive_directory)
             self._updated_zip_archive_paths.append(pathlib.Path(rezipped_archive_path))
+        return dict(
+            publish_not_allowed=publish_not_allowed
+        )
 
     def copy_archives_to_sharkdata(self):
         self._copy_archives_to_sharkdata()
