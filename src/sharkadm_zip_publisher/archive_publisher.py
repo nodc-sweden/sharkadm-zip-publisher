@@ -11,6 +11,20 @@ from sharkadm_zip_publisher.trigger import Trigger
 from sharkadm_zip_publisher import utils
 
 
+SKIP_DATA_TYPES = [
+    'epibenthos',
+    'epibenthos_dropvideo',
+    'zoobenthos',
+    'profile'
+]
+
+DEPTH_REPLACE_VALUE = '499'
+
+DEPTH_COLUMNS = [
+    'bottom_depth_m',
+]
+
+
 class ArchivePublisher(Trigger):
 
     def __init__(self,
@@ -43,15 +57,21 @@ class ArchivePublisher(Trigger):
         self._updated_zip_archive_paths = []
         for path in self._zip_archive_paths:
             data_holder = get_zip_archive_data_holder(path)
+            if data_holder.data_type in SKIP_DATA_TYPES:
+                adm_logger.log_workflow(f'Not allowed to publish package of data type {data_holder.data_type}: {path.name}',
+                                        level=adm_logger.INFO)
+                continue
             self._controller.set_data_holder(data_holder)
             self._run_transformers()
             encoding = 'cp1252'
             exporter = exporters.SHARKdataTxtAsGiven(encoding=encoding,
                                                      export_directory=data_holder.unzipped_archive_directory,
                                                      export_file_name=data_holder.unzipped_archive_directory / 'shark_data.txt')
-            adm_logger.log_workflow(f'Encoding is {encoding} for package {path}')
+            adm_logger.log_workflow(f'Encoding is {encoding} for package {path}', level=adm_logger.DEBUG)
 
             self._controller.export(exporter)
+            data_holder.remove_processed_data_directory()
+            data_holder.remove_received_data_directory()
             rezipped_archive_path = self._zip_directory(data_holder.unzipped_archive_directory)
             self._updated_zip_archive_paths.append(pathlib.Path(rezipped_archive_path))
 
@@ -114,7 +134,11 @@ class ArchivePublisher(Trigger):
             transformers.AddSampleDate(),
             transformers.CreateFakeFullDates(),
             transformers.ManualSealPathology(),
-            transformers.ManualHarbourPorpoise()
+            transformers.ManualHarbourPorpoise(),
+            transformers.RemoveValuesInColumns(
+                *DEPTH_COLUMNS,
+                replace_value=DEPTH_REPLACE_VALUE
+            )
         ]
 
     def _run_transformers(self):

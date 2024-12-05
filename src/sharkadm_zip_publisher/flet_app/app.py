@@ -486,7 +486,10 @@ class ZipArchivePublisherGUI:
         self.update_page()
 
     def _on_log_workflow(self, data: dict) -> None:
-        level = data.get('level')
+        self.log_workflow(data)
+
+    def log_workflow(self, data: dict) -> None:
+        level = data.get('level', '').lower()
         if level == 'debug':
             return
         if level in ['warning', 'error']:

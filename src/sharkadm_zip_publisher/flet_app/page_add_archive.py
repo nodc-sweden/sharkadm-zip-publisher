@@ -1,3 +1,5 @@
+import pathlib
+
 import flet as ft
 from sharkadm import utils as sharkadm_utils
 from sharkadm.sharkadm_logger import create_xlsx_report, adm_logger
@@ -7,13 +9,18 @@ from sharkadm_zip_publisher.flet_app import utils
 from sharkadm_zip_publisher.flet_app.constants import COLOR_DATASETS_MAIN
 from sharkadm_zip_publisher.flet_app.saves import publisher_saves
 from sharkadm_zip_publisher.zip import ZipPath
+from sharkadm import sharkadm_exceptions
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from sharkadm_zip_publisher.flet_app.app import ZipArchivePublisherGUI
 
 
 class PageAddArchive(ft.UserControl):
 
-    def __init__(self, main_app):
+    def __init__(self, main_app: 'ZipArchivePublisherGUI'):
         super().__init__()
-        self.main_app = main_app
+        self.main_app: 'ZipArchivePublisherGUI' = main_app
         self._zip_paths = set()
 
     def build(self):
@@ -33,6 +40,9 @@ class PageAddArchive(ft.UserControl):
         container_options = ft.Container(bgcolor=COLOR_DATASETS_MAIN,
                                          content=options_column)
         self._go_dataset_button = ft.ElevatedButton(text='Kör', on_click=self._run_zip, bgcolor='green')
+
+        self._nr_zip_packages = ft.Text('Inga paket valda')
+
         col = ft.Column([
             ft.Divider(height=9, thickness=3),
             ft.Row([
@@ -44,6 +54,7 @@ class PageAddArchive(ft.UserControl):
                     tooltip="Rensa listan",
                     on_click=self._delete_all_zip_paths
                 ),
+                self._nr_zip_packages
             ]),
             container_paths,
             container_options,
@@ -78,17 +89,30 @@ class PageAddArchive(ft.UserControl):
             self._zip_paths.add(file.path)
         controls = [ZipPath(path, on_delete=self._delete_zip_path) for path in sorted(self._zip_paths)]
         self._zip_paths_column.controls = controls
+        self._set_nr_zip_paths()
         self.update()
 
     def _delete_zip_path(self, path_control: ZipPath):
         self._zip_paths_column.controls.remove(path_control)
         self._zip_paths.remove(path_control.path)
+        self._set_nr_zip_paths()
         self.update()
 
     def _delete_all_zip_paths(self, event=None):
         self._zip_paths_column.controls = []
         self._zip_paths = set()
+        self._set_nr_zip_paths()
         self.update()
+
+    def _set_nr_zip_paths(self):
+        nr = len(self._zip_paths)
+        text = 'Inga valda paket'
+        if nr == 1:
+            text = f'{nr} paket valt'
+        elif nr:
+            text = f'{nr} paket valda'
+        self._nr_zip_packages.value = text
+        self._nr_zip_packages.update()
 
     def _enable_buttons(self):
         for btn in [
@@ -105,6 +129,113 @@ class PageAddArchive(ft.UserControl):
             btn.update()
 
     def _run_zip(self, *args):
+        try:
+            if not any([self._option_trigger_dataset_import.value, self._option_update_zip_archives.value,
+                        self._option_copy_zip_archives_to_sharkdata.value]):
+                self.main_app.show_dialog('Du har inte valt något att göra!')
+                return
+            if not self._zip_paths and any(
+                    [self._option_update_zip_archives.value, self._option_copy_zip_archives_to_sharkdata.value]):
+                self.main_app.show_dialog('Inga zip-arkiv valda!')
+                return
+            if self._zip_paths and self._option_copy_zip_archives_to_sharkdata.value and not self.main_app.datasets_directory:
+                self.main_app.show_dialog('Inga mapp för att lägga remove.txt vald!')
+                return
+            if self._option_trigger_dataset_import.value and not all(
+                    [self.main_app.trigger_url, self.main_app.status_url]):
+                self.main_app.show_dialog('Du måste fylla i fälten för URL!')
+                return
+
+            self._disable_buttons()
+            publisher_saves.export_saves()
+
+            sharkadm_utils.clear_temp_directory()
+
+            publisher = ArchivePublisher(
+                sharkdata_dataset_directory=self.main_app.datasets_directory,
+                zip_directory=self.main_app.zip_directory,
+                trigger_url=self.main_app.trigger_url,
+                import_url=self.main_app.status_url
+            )
+
+        except Exception as e:
+            self.main_app.show_dialog(f'Något gick fel:\n{e}')
+            self._enable_buttons()
+            raise
+
+        if self.main_app.env.upper() == 'TEST':
+            self._run_zip_test(publisher)
+        else:
+            self._run_zip_other(publisher)
+
+    def _run_zip_test(self, publisher: ArchivePublisher):
+        failing_zips = []
+        for path in sorted(self._zip_paths):
+            p = pathlib.Path(path)
+            try:
+                publisher.set_zip_archive_paths(path)
+                if self._option_update_zip_archives.value:
+                    self.main_app.show_info(f'Uppdaterar {path}...')
+                    publisher.update_zip_archives()
+                if self._option_copy_zip_archives_to_sharkdata.value:
+                    self.main_app.show_info(f'Kopierar {path}...')
+                    publisher.copy_archives_to_sharkdata()
+            except sharkadm_exceptions.SHARKadmException as e:
+                failing_zips.append(f'{p.name} -> {e}')
+            except Exception as e:
+                failing_zips.append(f'{p.name} -> {e}')
+                self.main_app.log_workflow(dict(
+                    level='warning', msg=f'FEL I PAKET (ej hanterat av SHARKadm) {pathlib.Path(path).name}: {e}'
+                ))
+            finally:
+                self._enable_buttons()
+        if self._option_trigger_dataset_import.value:
+            self.main_app.trigger_import()
+        if self._option_copy_zip_archives_to_sharkdata.value:
+            self.main_app.show_info(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
+            sharkadm_utils.clear_all_in_temp_directory()
+        create_xlsx_report(adm_logger, export_directory=utils.USER_DIR)
+        self._enable_buttons()
+        if failing_zips:
+            start_text = '1 felaktigt paket.'
+            if len(failing_zips) > 1:
+                start_text = f'{len((failing_zips))} felaktiga paket.'
+            self.main_app.show_dialog(f'{start_text} Se log för detaljer!')
+            self.main_app.log_workflow(dict(msg=''))
+            self.main_app.log_workflow(dict(msg='Could not handle the following packages'))
+            for info in failing_zips:
+                self.main_app.log_workflow(dict(msg=f'    {info}'))
+        else:
+            self.main_app.show_dialog('Allt klart!')
+
+    def _run_zip_other(self, publisher: ArchivePublisher):
+        try:
+            for path in sorted(self._zip_paths):
+                publisher.set_zip_archive_paths(path)
+                if self._option_update_zip_archives.value:
+                    self.main_app.show_info(f'Uppdaterar {path}...')
+                    publisher.update_zip_archives()
+                if self._option_copy_zip_archives_to_sharkdata.value:
+                    self.main_app.show_info(f'Kopierar {path}...')
+                    publisher.copy_archives_to_sharkdata()
+            if self._option_trigger_dataset_import.value:
+                self.main_app.trigger_import()
+            if self._option_copy_zip_archives_to_sharkdata.value:
+                self.main_app.show_info(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
+                sharkadm_utils.clear_all_in_temp_directory()
+            create_xlsx_report(adm_logger, export_directory=utils.USER_DIR)
+            self._enable_buttons()
+            self.main_app.show_dialog('Allt klart!')
+        except Exception as e:
+            self.main_app.show_dialog(f'Något gick fel:\n{e}')
+            self._enable_buttons()
+            raise
+
+
+
+
+
+    def _old_run_zip(self, *args):
         try:
             if not any([self._option_trigger_dataset_import.value, self._option_update_zip_archives.value, self._option_copy_zip_archives_to_sharkdata.value]):
                 self.main_app.show_dialog('Du har inte valt något att göra!')
