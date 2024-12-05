@@ -61,7 +61,7 @@ class ArchivePublisher(Trigger):
             if data_holder.data_type in SKIP_DATA_TYPES:
                 adm_logger.log_workflow(f'Not allowed to publish package of data type {data_holder.data_type}: {path.name}',
                                         level=adm_logger.INFO)
-                publish_not_allowed.append(path.name)
+                publish_not_allowed.append(f'{path.name} (data type {data_holder.data_type} not allowed)')
 
                 continue
             self._controller.set_data_holder(data_holder)

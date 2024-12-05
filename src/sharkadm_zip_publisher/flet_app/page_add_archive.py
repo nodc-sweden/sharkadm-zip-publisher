@@ -198,6 +198,7 @@ class PageAddArchive(ft.UserControl):
         create_xlsx_report(adm_logger, export_directory=utils.USER_DIR)
         self._enable_buttons()
         if info.get('publish_not_allowed'):
+            self.main_app.log_workflow(dict(msg=''))
             self.main_app.log_workflow(dict(msg='Not allowed to publish the following packages:'))
             for name in info.get('publish_not_allowed'):
                 self.main_app.log_workflow(dict(msg=f'    {name}'))
@@ -232,6 +233,7 @@ class PageAddArchive(ft.UserControl):
             create_xlsx_report(adm_logger, export_directory=utils.USER_DIR)
             self._enable_buttons()
             if info.get('publish_not_allowed'):
+                self.main_app.log_workflow(dict(msg=''))
                 self.main_app.log_workflow(dict(msg='Not allowed to publish the following packages:'))
                 for name in info.get('publish_not_allowed'):
                     self.main_app.log_workflow(dict(msg=f'    {name}'))
