@@ -170,7 +170,7 @@ class PageAddArchive(ft.UserControl):
 
     def _run_zip_test(self, publisher: ArchivePublisher):
         failing_zips = []
-        info = {}
+        publish_not_allowed = set()
         for path in sorted(self._zip_paths):
             p = pathlib.Path(path)
             try:
@@ -178,6 +178,7 @@ class PageAddArchive(ft.UserControl):
                 if self._option_update_zip_archives.value:
                     self.main_app.show_info(f'Uppdaterar {path}...')
                     info = publisher.update_zip_archives()
+                    publish_not_allowed.update(info.get('publish_not_allowed'))
                 if self._option_copy_zip_archives_to_sharkdata.value:
                     self.main_app.show_info(f'Kopierar {path}...')
                     publisher.copy_archives_to_sharkdata()
@@ -197,10 +198,10 @@ class PageAddArchive(ft.UserControl):
             sharkadm_utils.clear_all_in_temp_directory()
         create_xlsx_report(adm_logger, export_directory=utils.USER_DIR)
         self._enable_buttons()
-        if info.get('publish_not_allowed'):
+        if publish_not_allowed:
             self.main_app.log_workflow(dict(msg=''))
             self.main_app.log_workflow(dict(msg='Not allowed to publish the following packages:'))
-            for name in info.get('publish_not_allowed'):
+            for name in publish_not_allowed:
                 self.main_app.log_workflow(dict(msg=f'    {name}'))
         if failing_zips:
             start_text = '1 felaktigt paket.'
@@ -215,13 +216,14 @@ class PageAddArchive(ft.UserControl):
             self.main_app.show_dialog('Allt klart!')
 
     def _run_zip_other(self, publisher: ArchivePublisher):
-        info = {}
+        publish_not_allowed = set()
         try:
             for path in sorted(self._zip_paths):
                 publisher.set_zip_archive_paths(path)
                 if self._option_update_zip_archives.value:
                     self.main_app.show_info(f'Uppdaterar {path}...')
                     info = publisher.update_zip_archives()
+                    publish_not_allowed.update(info.get('publish_not_allowed'))
                 if self._option_copy_zip_archives_to_sharkdata.value:
                     self.main_app.show_info(f'Kopierar {path}...')
                     publisher.copy_archives_to_sharkdata()
@@ -232,10 +234,10 @@ class PageAddArchive(ft.UserControl):
                 sharkadm_utils.clear_all_in_temp_directory()
             create_xlsx_report(adm_logger, export_directory=utils.USER_DIR)
             self._enable_buttons()
-            if info.get('publish_not_allowed'):
+            if publish_not_allowed:
                 self.main_app.log_workflow(dict(msg=''))
                 self.main_app.log_workflow(dict(msg='Not allowed to publish the following packages:'))
-                for name in info.get('publish_not_allowed'):
+                for name in publish_not_allowed:
                     self.main_app.log_workflow(dict(msg=f'    {name}'))
             self.main_app.show_dialog('Allt klart!')
         except Exception as e:
