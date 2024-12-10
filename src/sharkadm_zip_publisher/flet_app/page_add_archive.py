@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from sharkadm_zip_publisher.flet_app.app import ZipArchivePublisherGUI
 
 
+
 class PageAddArchive(ft.UserControl):
 
     def __init__(self, main_app: 'ZipArchivePublisherGUI'):
@@ -196,7 +197,8 @@ class PageAddArchive(ft.UserControl):
         if self._option_copy_zip_archives_to_sharkdata.value:
             self.main_app.show_info(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
             sharkadm_utils.clear_all_in_temp_directory()
-        create_xlsx_report(adm_logger, export_directory=utils.USER_DIR)
+        create_xlsx_report(adm_logger, export_directory=utils.LOG_DIRECTORY)
+        create_xlsx_report(adm_logger.reset_filter().filter('>warning', 'transformation'), export_directory=utils.LOG_DIRECTORY)
         self._enable_buttons()
         if publish_not_allowed:
             self.main_app.log_workflow(dict(msg=''))
@@ -232,7 +234,8 @@ class PageAddArchive(ft.UserControl):
             if self._option_copy_zip_archives_to_sharkdata.value:
                 self.main_app.show_info(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
                 sharkadm_utils.clear_all_in_temp_directory()
-            create_xlsx_report(adm_logger, export_directory=utils.USER_DIR)
+            create_xlsx_report(adm_logger, export_directory=utils.LOG_DIRECTORY)
+            create_xlsx_report(adm_logger.reset_filter().filter('>warning', 'transformation'), export_directory=utils.LOG_DIRECTORY)
             self._enable_buttons()
             if publish_not_allowed:
                 self.main_app.log_workflow(dict(msg=''))
@@ -290,7 +293,7 @@ class PageAddArchive(ft.UserControl):
                 self.main_app.trigger_import()
             self.main_app.show_info(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
             sharkadm_utils.clear_all_in_temp_directory()
-            create_xlsx_report(adm_logger, export_directory=utils.USER_DIR)
+            create_xlsx_report(adm_logger, export_directory=utils.LOG_DIRECTORY)
             self._enable_buttons()
             self.main_app.show_dialog('Allt klart!')
         except Exception as e:
