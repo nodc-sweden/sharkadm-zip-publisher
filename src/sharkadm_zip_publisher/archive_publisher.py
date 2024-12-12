@@ -167,7 +167,7 @@ class ArchivePublisher(Trigger):
                 self._transformers.append(transformers.RemoveDeepestDepthAtEachVisit(
                     valid_data_types=['Bacterioplankton', 'Harbourporpoise'],
                     depth_column=col,
-                    also_remove_from_columns=[],
+                    also_remove_from_columns=['sample_id', 'shark_sample_id'],
                     replace_value=restrict.DEPTH_REPLACE_VALUE
                 ))
 
