@@ -31,7 +31,7 @@ class PageTransformers(ft.UserControl):
 
     def _set_transformers_column(self) -> None:
         pub = ArchivePublisher()
-        for tran in pub.transformers:
+        for tran in pub.all_transformers:
             # text = f'{tran.description} ({tran.__class__.__name__})'
 
             self.lv.controls.append(ft.Row([ft.Text(tran.description),

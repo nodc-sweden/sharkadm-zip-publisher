@@ -197,8 +197,7 @@ class PageAddArchive(ft.UserControl):
         if self._option_copy_zip_archives_to_sharkdata.value:
             self.main_app.show_info(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
             sharkadm_utils.clear_all_in_temp_directory()
-        create_xlsx_report(adm_logger, export_directory=utils.LOG_DIRECTORY)
-        create_xlsx_report(adm_logger.reset_filter().filter('>warning', 'transformation'), export_directory=utils.LOG_DIRECTORY)
+        self._create_reports()
         self._enable_buttons()
         if publish_not_allowed:
             self.main_app.log_workflow(dict(msg=''))
@@ -234,8 +233,7 @@ class PageAddArchive(ft.UserControl):
             if self._option_copy_zip_archives_to_sharkdata.value:
                 self.main_app.show_info(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
                 sharkadm_utils.clear_all_in_temp_directory()
-            create_xlsx_report(adm_logger, export_directory=utils.LOG_DIRECTORY)
-            create_xlsx_report(adm_logger.reset_filter().filter('>warning', 'transformation'), export_directory=utils.LOG_DIRECTORY)
+            self._create_reports()
             self._enable_buttons()
             if publish_not_allowed:
                 self.main_app.log_workflow(dict(msg=''))
@@ -250,9 +248,12 @@ class PageAddArchive(ft.UserControl):
         finally:
             self._enable_buttons()
 
-
-
-
+    def _create_reports(self) -> None:
+        create_xlsx_report(adm_logger.reset_filter(), export_directory=utils.LOG_DIRECTORY)
+        create_xlsx_report(adm_logger.reset_filter().filter('>warning', 'transformation'),
+                           export_directory=utils.LOG_DIRECTORY, tag='transformation')
+        create_xlsx_report(adm_logger.reset_filter().filter('>info', 'validation'),
+                           export_directory=utils.LOG_DIRECTORY, tag='validation')
 
     def _old_run_zip(self, *args):
         try:
