@@ -180,9 +180,9 @@ class PageAddArchive(ft.UserControl):
                     info = publisher.update_zip_archives()
                     publish_not_allowed.update(info.get('publish_not_allowed'))
                 if self._option_copy_zip_archives_to_sharkdata.value:
-                    if publisher.publish_is_allowed(p.name, allow_all=True):
+                    if publisher.publish_is_allowed(p.name, allow_all=False):
                         self.main_app.show_info(f'Kopierar {path}...')
-                    publisher.copy_archives_to_sharkdata(allow_all=True)
+                    publisher.copy_archives_to_sharkdata(allow_all=False)
             except sharkadm_exceptions.SHARKadmException as e:
                 failing_zips.append(f'{p.name} -> {e}')
             except Exception as e:

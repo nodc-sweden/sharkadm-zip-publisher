@@ -60,9 +60,6 @@ class ArchivePublisher(Trigger):
             return True
         if self._package_is_unrestricted(data_holder.zip_archive_path.name):
             return True
-        # for pack in self._unrestricted_packages:
-        #     if pack.upper() in data_holder.zip_archive_path.name.upper():
-        #         return True
         adm_logger.log_workflow(
             f'Not allowed to publish package of data type {data_holder.data_type}: {data_holder.zip_archive_path.name}',
             level=adm_logger.INFO)
@@ -73,9 +70,6 @@ class ArchivePublisher(Trigger):
             return
         if self._package_is_unrestricted(data_holder.zip_archive_path.name):
             return
-        # for pack in self._unrestricted_packages:
-        #     if pack.upper() in data_holder.zip_archive_path.name.upper():
-        #         return
         data_holder.remove_processed_data_directory()
         data_holder.remove_received_data_directory()
         data_holder.remove_readme_files()
@@ -123,8 +117,6 @@ class ArchivePublisher(Trigger):
         for source_path in self.zip_archive_paths:
             if not self.publish_is_allowed(source_path.name, allow_all=allow_all):
                 continue
-            # if not allow_all and restrict.RESTRICT_DATA and source_path.name in self._publish_not_allowed_packs:
-            #     continue
             self._copy_archive_to_sharkdata(source_path)
             self._copy_archive_to_zip_directory(source_path)
         # self._copy_archives_to_sharkdata()
@@ -161,45 +153,44 @@ class ArchivePublisher(Trigger):
         # Copy new zips
         shutil.copy2(source_path, target_path)
 
-    def _copy_archives_to_sharkdata(self):
-        target_root = pathlib.Path(self._config['sharkdata_dataset_directory'])
-        for source_path in self.zip_archive_paths:
-            if restrict.RESTRICT_DATA and source_path.name in self._publish_not_allowed_packs:
-                continue
-            target_path = target_root / source_path.name
-            shutil.copy2(source_path, target_path)
-
-
-    def _copy_archives_to_zip_directory(self):
-        if not self._config['zip_directory']:
-            adm_logger.log_workflow(f'No zip_directory given. Could not copy "locally"!')
-            return
-        target_root = pathlib.Path(self._config['zip_directory'])
-        if not target_root.exists():
-            adm_logger.log_workflow(f'Invalid zip_directory: {target_root}')
-            return
-
-        current_mapped_zips = utils.get_zip_name_path_mapping(target_root)
-        zips_to_remove = []
-        zips_to_copy = []
-        for source_path in self.zip_archive_paths:
-            if restrict.RESTRICT_DATA and source_path.name in self._publish_not_allowed_packs:
-                continue
-            source_name_no_date = utils.get_zip_name_without_date(source_path.stem)
-            current_zip = current_mapped_zips.get(source_name_no_date)
-            if current_zip:
-                zips_to_remove.append(current_zip)
-            target_path = target_root / source_path.name
-            zips_to_copy.append((source_path, target_path))
-
-        # Remove old zips
-        for path in zips_to_remove:
-            adm_logger.log_workflow(f'Removing old package: {path}')
-            os.remove(path)
-
-        # Copy new zips
-        for source_path, target_path in zips_to_copy:
-            shutil.copy2(source_path, target_path)
+    # def _copy_archives_to_sharkdata(self):
+    #     target_root = pathlib.Path(self._config['sharkdata_dataset_directory'])
+    #     for source_path in self.zip_archive_paths:
+    #         if restrict.RESTRICT_DATA and source_path.name in self._publish_not_allowed_packs:
+    #             continue
+    #         target_path = target_root / source_path.name
+    #         shutil.copy2(source_path, target_path)
+    #
+    # def _copy_archives_to_zip_directory(self):
+    #     if not self._config['zip_directory']:
+    #         adm_logger.log_workflow(f'No zip_directory given. Could not copy "locally"!')
+    #         return
+    #     target_root = pathlib.Path(self._config['zip_directory'])
+    #     if not target_root.exists():
+    #         adm_logger.log_workflow(f'Invalid zip_directory: {target_root}')
+    #         return
+    #
+    #     current_mapped_zips = utils.get_zip_name_path_mapping(target_root)
+    #     zips_to_remove = []
+    #     zips_to_copy = []
+    #     for source_path in self.zip_archive_paths:
+    #         if restrict.RESTRICT_DATA and source_path.name in self._publish_not_allowed_packs:
+    #             continue
+    #         source_name_no_date = utils.get_zip_name_without_date(source_path.stem)
+    #         current_zip = current_mapped_zips.get(source_name_no_date)
+    #         if current_zip:
+    #             zips_to_remove.append(current_zip)
+    #         target_path = target_root / source_path.name
+    #         zips_to_copy.append((source_path, target_path))
+    #
+    #     # Remove old zips
+    #     for path in zips_to_remove:
+    #         adm_logger.log_workflow(f'Removing old package: {path}')
+    #         os.remove(path)
+    #
+    #     # Copy new zips
+    #     for source_path, target_path in zips_to_copy:
+    #         shutil.copy2(source_path, target_path)
 
     @property
     def all_transformers(self) -> list[transformers.Transformer]:
@@ -352,9 +343,6 @@ class ArchivePublisher(Trigger):
             return
         if self._package_is_unrestricted(self._controller.dataset_name):
             return
-        # for pack in self._unrestricted_packages:
-        #     if pack.upper() in self._controller.dataset_name.upper():
-        #         return
         for trans in self._restricted_transformers:
             self._controller.transform(trans)
 

@@ -16,13 +16,6 @@ SKIP_DATA_TYPES = [
     'profile'
 ]
 
-
-# INCLUDE_PACKAGES = [
-#     'SHARK_Epibenthos_2019_OLST',
-#     'SHARK_Epibenthos_2024_MMAB_GBGKOM_dropvideo',
-#
-# ]
-
 DEPTH_REPLACE_VALUE = '999'
 COMMENT_REPLACE_VALUE = ''
 SECCHI_REPLACE_VALUE = ''
