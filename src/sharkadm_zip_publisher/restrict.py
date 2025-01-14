@@ -1,3 +1,10 @@
+from sharkadm import utils
+
+CONFIG_DIR = utils.get_root_directory() / 'zip_archive_publisher' / 'config'
+CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+UNRESTRICTED_PACKAGES_PATH = CONFIG_DIR / 'unrestricted_packages.txt'
+
 
 RESTRICT_DATA = True
 
@@ -9,9 +16,12 @@ SKIP_DATA_TYPES = [
     'profile'
 ]
 
-INCLUDE_PACKAGES = [
-    'SHARK_Epibenthos_2019_OLST',
-]
+
+# INCLUDE_PACKAGES = [
+#     'SHARK_Epibenthos_2019_OLST',
+#     'SHARK_Epibenthos_2024_MMAB_GBGKOM_dropvideo',
+#
+# ]
 
 DEPTH_REPLACE_VALUE = '999'
 COMMENT_REPLACE_VALUE = ''
@@ -58,3 +68,22 @@ COMMENT_COLUMNS = [
     'section_substrate_comnt_softbottom',
     'section_substrate_comnt_stone',
 ]
+
+
+def _reset_unrestricted_packages() -> None:
+    with open(UNRESTRICTED_PACKAGES_PATH, 'w') as fid:
+        pass
+
+
+def get_unrestricted_packages() -> list[str]:
+    if not UNRESTRICTED_PACKAGES_PATH.exists():
+        _reset_unrestricted_packages()
+        return []
+    packs = []
+    with open(UNRESTRICTED_PACKAGES_PATH) as fid:
+        for line in fid:
+            pack = line.strip()
+            if not pack:
+                continue
+            packs.append(pack)
+    return packs
