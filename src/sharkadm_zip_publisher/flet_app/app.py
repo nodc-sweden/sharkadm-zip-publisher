@@ -395,6 +395,7 @@ class ZipArchivePublisherGUI:
         self._env_dropdown.value = env
         self._env_dropdown.update()
         self._on_change_env()
+        print(f'{self._env_dropdown.value=}')
 
     def trigger_import(self, *args, on_remove=False):
         if not (self.trigger_url and self.status_url):

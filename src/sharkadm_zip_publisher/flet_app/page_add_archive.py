@@ -167,7 +167,7 @@ class PageAddArchive(ft.UserControl):
         if self.main_app.env.upper() == 'TEST':
             self._run_zip_test(publisher)
         elif self.main_app.env.upper() == 'PROD':
-            self._run_zip_test(publisher)
+            self._run_zip_other(publisher)
             self._change_env_with_same_options('UTV')
             dev_publisher = ArchivePublisher(
                 sharkdata_dataset_directory=self.main_app.datasets_directory,
@@ -176,7 +176,7 @@ class PageAddArchive(ft.UserControl):
                 import_url=self.main_app.status_url,
                 restrict_data=False,
             )
-            self._run_zip_test(dev_publisher)
+            self._run_zip_other(dev_publisher)
             self._change_env_with_same_options('PROD')
         else:
             self._run_zip_other(publisher)

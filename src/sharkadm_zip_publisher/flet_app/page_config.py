@@ -110,17 +110,37 @@ class PageConfig(ft.UserControl):
                 import_url=self.main_app.status_url
             )
 
-            if self._option_copy_config_to_sharkdata.value:
-                publisher.set_config_paths(list(self._config_paths))
-                publisher.copy_config_files_to_sharkdata()
-
-            if self._option_trigger_config_import.value:
-                self.main_app.trigger_import()
+            self._do_stuff(publisher)
+            if self.main_app.env.upper() == 'PROD':
+                self._change_env_with_same_options('UTV')
+                dev_publisher = ConfigPublisher(
+                    sharkdata_config_directory=self.main_app.config_directory,
+                    trigger_url=self.main_app.trigger_url,
+                    import_url=self.main_app.status_url
+                )
+                self._do_stuff(dev_publisher)
+                self._change_env_with_same_options('PROD')
             self.main_app.show_dialog('Allt klart!')
             self._enable_buttons()
         except Exception as e:
             self.main_app.show_dialog(f'Något gick fel:\n{e}')
             raise
+
+    def _do_stuff(self, publisher: ConfigPublisher) -> None:
+        if self._option_copy_config_to_sharkdata.value:
+            publisher.set_config_paths(list(self._config_paths))
+            publisher.copy_config_files_to_sharkdata()
+        if self._option_trigger_config_import.value:
+            self.main_app.trigger_import()
+
+    def _change_env_with_same_options(self, env: str):
+        option_copy = self._option_copy_config_to_sharkdata.value
+        option_trigger_import = self._option_trigger_config_import.value
+        self.main_app.change_env(env)
+        self._option_copy_config_to_sharkdata.value = option_copy
+        self._option_trigger_config_import.value = option_trigger_import
+        self._option_copy_config_to_sharkdata.update()
+        self._option_trigger_config_import.update()
 
     def _enable_buttons(self):
         for btn in [
