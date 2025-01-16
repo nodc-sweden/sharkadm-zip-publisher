@@ -116,17 +116,38 @@ class PageRemoveArchive(ft.UserControl):
                 trigger_url=self.main_app.trigger_url,
                 import_url=self.main_app.status_url)
 
-            if self._option_create_remove_file.value:
-                publisher.set_remove_names(list(self._remove_zip_names))
-                publisher.create_remove_file()
+            self._do_stuff(publisher)
+            if self.main_app.env.upper() == 'PROD':
+                self._change_env_with_same_options('UTV')
+                dev_publisher = ArchiveRemover(
+                    sharkdata_datasets_directory=self.main_app.datasets_directory,
+                    trigger_url=self.main_app.trigger_url,
+                    import_url=self.main_app.status_url
+                )
+                self._do_stuff(dev_publisher)
+                self._change_env_with_same_options('PROD')
 
-            if self._option_trigger_remove_file.value:
-                self.main_app.trigger_import(on_remove=True)
             self._enable_buttons()
-            # self.main_app.show_dialog('Allt klart!')
+            self.main_app.show_dialog('Allt klart!')
         except Exception as e:
             self.main_app.show_dialog(f'Något gick fel:\n{e}')
             raise
+
+    def _do_stuff(self, publisher: ArchiveRemover) -> None:
+        if self._option_create_remove_file.value:
+            publisher.set_remove_names(list(self._remove_zip_names))
+            publisher.create_remove_file()
+        if self._option_trigger_remove_file.value:
+            self.main_app.trigger_import()
+
+    def _change_env_with_same_options(self, env: str):
+        option_copy = self._option_create_remove_file.value
+        option_trigger_import = self._option_trigger_remove_file.value
+        self.main_app.change_env(env)
+        self._option_create_remove_file.value = option_copy
+        self._option_trigger_remove_file.value = option_trigger_import
+        self._option_create_remove_file.update()
+        self._option_trigger_remove_file.update()
 
     def _on_pick_remove_zip_files(self, e: ft.FilePickerResultEvent) -> None:
         if not e.files:
