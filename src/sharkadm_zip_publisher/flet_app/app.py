@@ -47,8 +47,12 @@ class ZipArchivePublisherGUI:
         return USER_DIR / 'zip_publisher_log.txt'
 
     @property
-    def env(self):
+    def env(self) -> str:
         return self._env_dropdown.value
+
+    @property
+    def restrict_data(self) -> bool:
+        return self._restrict_data.value
 
     def _remove_log_file(self):
         if self.log_file_path.exists():
@@ -292,7 +296,7 @@ class ZipArchivePublisherGUI:
         sharkadm_utils.open_directory(self.config_directory)
 
     def _get_option_column(self) -> ft.Column:
-        dd_options = [ft.dropdown.Option(value) for value in publisher_saves.envs]
+        dd_options = [ft.dropdown.Option(value) for value in publisher_saves.selectable_envs]
         self._env_dropdown = ft.Dropdown(
             width=100,
             options=dd_options,
@@ -301,11 +305,14 @@ class ZipArchivePublisherGUI:
 
         self._env_dropdown.value = 'TEST'
 
+        self._restrict_data = ft.Checkbox(label='Begränsa djupdata', value=True)
+
         self._trigger_btn = ft.ElevatedButton(text='Trigga import', on_click=self.trigger_import, bgcolor='green')
 
         return ft.Column([
             self._get_import_config_button(),
             self._env_dropdown,
+            self._restrict_data,
             self._trigger_btn
         ])
 
@@ -365,6 +372,15 @@ class ZipArchivePublisherGUI:
             self._dynamic_variable_paths_column.visible = False
             self._trigger_btn.disabled = False
 
+        # Valid restrict options
+        if value not in ['TEST', 'LOKALT']:
+            self._restrict_data.value = True
+            self._restrict_data.disabled = True
+        else:
+            self._restrict_data.value = True
+            self._restrict_data.disabled = False
+        self._restrict_data.update()
+
         self._static_variable_paths_column.update()
         self._dynamic_variable_paths_column.update()
         self._trigger_btn.update()
@@ -372,6 +388,13 @@ class ZipArchivePublisherGUI:
         publisher_saves.set_env(value)
         publisher_saves.import_saves(self)
         self._check_paths()
+
+    def change_env(self, env: str):
+        if env not in publisher_saves.envs:
+            return
+        self._env_dropdown.value = env
+        self._env_dropdown.update()
+        self._on_change_env()
 
     def trigger_import(self, *args, on_remove=False):
         if not (self.trigger_url and self.status_url):

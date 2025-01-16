@@ -18,7 +18,8 @@ class ArchivePublisher(Trigger):
                  sharkdata_dataset_directory=None,
                  zip_directory=None,
                  trigger_url=None,
-                 import_url=None
+                 import_url=None,
+                 restrict_data=None,  # If None restriction is decided from restrict.RESTRICT_DATA
                  ):
         self._config = dict(
             sharkdata_dataset_directory=sharkdata_dataset_directory,
@@ -35,6 +36,8 @@ class ArchivePublisher(Trigger):
         self._updated_zip_archive_paths: list[pathlib.Path] = []
         self._publish_not_allowed_packs: list[pathlib.Path] = []
 
+        self._restrict_data = restrict_data
+
         self._controller = controller.SHARKadmController()
 
         self._create_transformers()
@@ -50,11 +53,17 @@ class ArchivePublisher(Trigger):
         return False
 
     @property
+    def restrict_data(self):
+        if self._restrict_data is None:
+            return restrict.RESTRICT_DATA
+        return self._restrict_data
+
+    @property
     def zip_archive_paths(self):
         return sorted(self._updated_zip_archive_paths) or sorted(self._zip_archive_paths)
 
     def _package_is_ok_to_publish(self, data_holder) -> bool:
-        if not restrict.RESTRICT_DATA:
+        if not self.restrict_data:
             return True
         if data_holder.data_type not in restrict.SKIP_DATA_TYPES:
             return True
@@ -66,7 +75,7 @@ class ArchivePublisher(Trigger):
         return False
 
     def _restrict_data_holder(self, data_holder) -> None:
-        if not restrict.RESTRICT_DATA:
+        if not self.restrict_data:
             return
         if self._package_is_unrestricted(data_holder.zip_archive_path.name):
             return
@@ -107,7 +116,7 @@ class ArchivePublisher(Trigger):
     def publish_is_allowed(self, pack_name: str, allow_all: bool = False) -> bool:
         if allow_all:
             return True
-        if not restrict.RESTRICT_DATA:
+        if not self.restrict_data:
             return True
         if pack_name in self._publish_not_allowed_packs:
             return False
@@ -156,7 +165,7 @@ class ArchivePublisher(Trigger):
     # def _copy_archives_to_sharkdata(self):
     #     target_root = pathlib.Path(self._config['sharkdata_dataset_directory'])
     #     for source_path in self.zip_archive_paths:
-    #         if restrict.RESTRICT_DATA and source_path.name in self._publish_not_allowed_packs:
+    #         if self.restrict_data and source_path.name in self._publish_not_allowed_packs:
     #             continue
     #         target_path = target_root / source_path.name
     #         shutil.copy2(source_path, target_path)
@@ -174,7 +183,7 @@ class ArchivePublisher(Trigger):
     #     zips_to_remove = []
     #     zips_to_copy = []
     #     for source_path in self.zip_archive_paths:
-    #         if restrict.RESTRICT_DATA and source_path.name in self._publish_not_allowed_packs:
+    #         if self.restrict_data and source_path.name in self._publish_not_allowed_packs:
     #             continue
     #         source_name_no_date = utils.get_zip_name_without_date(source_path.stem)
     #         current_zip = current_mapped_zips.get(source_name_no_date)
@@ -193,8 +202,11 @@ class ArchivePublisher(Trigger):
     #         shutil.copy2(source_path, target_path)
 
     @property
-    def all_transformers(self) -> list[transformers.Transformer]:
-        return self._transformers + self._restricted_transformers
+    def all_transformers(self) -> dict[str, list[transformers.Transformer]]:
+        return dict(
+            mandatory=self._transformers,
+            restricted=self._restricted_transformers
+        )
 
     @property
     def validators_after(self) -> list[validators.Validator]:
@@ -207,7 +219,7 @@ class ArchivePublisher(Trigger):
     def _create_validators_after(self) -> None:
         self._validators_after = []
 
-        if not restrict.RESTRICT_DATA:
+        if not self.restrict_data:
             return
         self._validators_after.append(
             validators.AssertMinMaxDepthCombination(
@@ -270,7 +282,7 @@ class ArchivePublisher(Trigger):
             ]
 
         self._restricted_transformers = []
-        if restrict.RESTRICT_DATA:
+        if self.restrict_data:
             self._restricted_transformers.extend([
                 transformers.RemoveValuesInColumns(*restrict.DEPTH_COLUMNS, replace_value=restrict.DEPTH_REPLACE_VALUE),
                 transformers.RemoveValuesInColumns(*restrict.SECCHI_COLUMNS, replace_value=restrict.SECCHI_REPLACE_VALUE),
@@ -339,7 +351,7 @@ class ArchivePublisher(Trigger):
     def _run_transformers(self) -> None:
         for trans in self._transformers:
             self._controller.transform(trans)
-        if not restrict.RESTRICT_DATA:
+        if not self.restrict_data:
             return
         if self._package_is_unrestricted(self._controller.dataset_name):
             return

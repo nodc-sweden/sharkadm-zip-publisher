@@ -24,6 +24,10 @@ class PublisherSaves:
         return ['TEST', 'UTV', 'PROD', 'LOKALT']
 
     @property
+    def selectable_envs(self) -> list[str]:
+        return [env for env in self.envs if env not in ['UTV']]
+
+    @property
     def save_path(self):
         return pathlib.Path(USER_DIR, f'zip_archive_publisher_saves_{self._env}.yaml').resolve()
 
