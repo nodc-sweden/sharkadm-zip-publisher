@@ -12,3 +12,4 @@ def get_zip_name_path_mapping(directory: str | pathlib.Path) -> dict[str, pathli
             continue
         mapped[get_zip_name_without_date(path.stem)] = path
     return mapped
+

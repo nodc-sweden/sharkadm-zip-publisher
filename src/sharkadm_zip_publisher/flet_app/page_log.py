@@ -20,9 +20,9 @@ class PageLog(ft.UserControl):
         return col
 
     def _open_log_directory(self, *args):
-        if not utils.USER_DIR.exists():
+        if not utils.LOG_DIRECTORY.exists():
             return
-        sharkadm_utils.open_directory(utils.USER_DIR)
+        sharkadm_utils.open_directory(utils.LOG_DIRECTORY)
 
     def clear_text(self) -> None:
         self.lv.controls = []
