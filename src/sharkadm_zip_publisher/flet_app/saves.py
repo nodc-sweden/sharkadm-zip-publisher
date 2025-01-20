@@ -25,7 +25,8 @@ class PublisherSaves:
 
     @property
     def selectable_envs(self) -> list[str]:
-        return [env for env in self.envs if env not in ['UTV']]
+        return self.envs
+        # return [env for env in self.envs if env not in ['UTV']]
 
     @property
     def save_path(self):

@@ -306,6 +306,7 @@ class ZipArchivePublisherGUI:
         self._env_dropdown.value = 'TEST'
 
         self._restrict_data = ft.Checkbox(label='Begränsa djupdata', value=True)
+        self._restrict_data.disabled = True
 
         self._trigger_btn = ft.ElevatedButton(text='Trigga import', on_click=self.trigger_import, bgcolor='green')
 
@@ -373,7 +374,10 @@ class ZipArchivePublisherGUI:
             self._trigger_btn.disabled = False
 
         # Valid restrict options
-        if value not in ['TEST', 'LOKALT']:
+        if value == 'UTV':
+            self._restrict_data.value = False
+            self._restrict_data.disabled = True
+        elif value in ['PROD', 'TEST']:
             self._restrict_data.value = True
             self._restrict_data.disabled = True
         else:
@@ -395,7 +399,6 @@ class ZipArchivePublisherGUI:
         self._env_dropdown.value = env
         self._env_dropdown.update()
         self._on_change_env()
-        print(f'{self._env_dropdown.value=}')
 
     def trigger_import(self, *args, on_remove=False):
         if not (self.trigger_url and self.status_url):
