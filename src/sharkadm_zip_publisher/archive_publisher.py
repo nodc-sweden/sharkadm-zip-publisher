@@ -294,7 +294,8 @@ class ArchivePublisher(Trigger):
                     valid_data_types=['PhysicalChemical'],
                     depth_column='sample_depth_m',
                     also_remove_from_columns=['sample_id', 'shark_sample_id'],
-                    replace_value=restrict.DEPTH_REPLACE_VALUE
+                    replace_value=restrict.DEPTH_REPLACE_VALUE,
+                    keep_single_depth_at_surface=True,
                 ),
             ])
             for col in ['sample_depth_m', 'sample_min_depth_m', 'sample_max_depth_m']:

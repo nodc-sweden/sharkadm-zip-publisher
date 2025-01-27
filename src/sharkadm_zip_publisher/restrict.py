@@ -20,23 +20,23 @@ DEPTH_REPLACE_VALUE = '999'
 COMMENT_REPLACE_VALUE = ''
 SECCHI_REPLACE_VALUE = ''
 
-# DEPTH_COLUMNS = [
-#     'bottom_depth_m',
-#     'water_depth_m',
-#     ]
-
 DEPTH_COLUMNS = [
     'bottom_depth_m',
     'water_depth_m',
-    'sample_min_depth_m',
-    'sample_max_depth_m',
-    'transect_min_depth_m',
-    'transect_max_depth_m',
-    'transect_start_depth_m',
-    'transect_stop_depth_m',
-    'section_start_depth_m',
-    'section_end_depth_m',
     ]
+
+# DEPTH_COLUMNS = [
+#     'bottom_depth_m',
+#     'water_depth_m',
+#     'sample_min_depth_m',
+#     'sample_max_depth_m',
+#     'transect_min_depth_m',
+#     'transect_max_depth_m',
+#     'transect_start_depth_m',
+#     'transect_stop_depth_m',
+#     'section_start_depth_m',
+#     'section_end_depth_m',
+#     ]
 
 SECCHI_COLUMNS = [
     'secchi_depth_m',
