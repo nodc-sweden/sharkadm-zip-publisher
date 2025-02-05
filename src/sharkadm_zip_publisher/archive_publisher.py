@@ -6,6 +6,7 @@ from sharkadm import transformers, controller, exporters, adm_logger, validators
 from sharkadm import utils as sharkadm_utils
 from sharkadm.data import get_zip_archive_data_holder
 from sharkadm_zip_publisher import restrict
+from sharkadm.utils import data_filter
 
 from sharkadm_zip_publisher.trigger import Trigger
 
@@ -283,12 +284,16 @@ class ArchivePublisher(Trigger):
 
         self._restricted_transformers = []
         if self.restrict_data:
+            dfilter = data_filter.DataFilterRestrictDepth()
+            # self._restricted_transformers.append(transformers.AddSamplePositionDD())
+            self._restricted_transformers.append(transformers.AddSamplePositionSweref99tm())
+            self._restricted_transformers.append(transformers.AddLocationWB())
             self._restricted_transformers.extend([
-                transformers.RemoveValuesInColumns(*restrict.DEPTH_COLUMNS, replace_value=restrict.DEPTH_REPLACE_VALUE),
-                transformers.RemoveValuesInColumns(*restrict.SECCHI_COLUMNS, replace_value=restrict.SECCHI_REPLACE_VALUE),
-                transformers.RemoveValuesInColumns(*restrict.COMMENT_COLUMNS, replace_value=restrict.COMMENT_REPLACE_VALUE),
+                transformers.RemoveValuesInColumns(*restrict.DEPTH_COLUMNS, replace_value=restrict.DEPTH_REPLACE_VALUE, data_filter=dfilter),
+                transformers.RemoveValuesInColumns(*restrict.SECCHI_COLUMNS, replace_value=restrict.SECCHI_REPLACE_VALUE, data_filter=dfilter),
+                transformers.RemoveValuesInColumns(*restrict.COMMENT_COLUMNS, replace_value=restrict.COMMENT_REPLACE_VALUE, data_filter=dfilter),
 
-                transformers.RemoveRowsForParameters(*restrict.REMOVE_PARAMETER_ROWS),
+                transformers.RemoveRowsForParameters(*restrict.REMOVE_PARAMETER_ROWS, data_filter=dfilter),
 
                 transformers.RemoveDeepestDepthAtEachVisit(
                     valid_data_types=['PhysicalChemical'],
@@ -296,6 +301,7 @@ class ArchivePublisher(Trigger):
                     also_remove_from_columns=['sample_id', 'shark_sample_id'],
                     replace_value=restrict.DEPTH_REPLACE_VALUE,
                     keep_single_depth_at_surface=True,
+                    data_filter=dfilter,
                 ),
             ])
             for col in ['sample_depth_m', 'sample_min_depth_m', 'sample_max_depth_m']:
@@ -303,7 +309,8 @@ class ArchivePublisher(Trigger):
                     valid_data_types=['Bacterioplankton', 'Harbourporpoise'],
                     depth_column=col,
                     also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5'],
-                    replace_value=restrict.DEPTH_REPLACE_VALUE
+                    replace_value=restrict.DEPTH_REPLACE_VALUE,
+                    data_filter=dfilter,
                 ))
 
             self._restricted_transformers.append(transformers.RemoveInterval(
@@ -317,7 +324,8 @@ class ArchivePublisher(Trigger):
                 ],
                 keep_if_min_depths_are=['0'],
                 replace_value=restrict.DEPTH_REPLACE_VALUE,
-                also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5']
+                also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5'],
+                data_filter=dfilter,
             ))
 
             self._restricted_transformers.append(transformers.RemoveInterval(
@@ -332,7 +340,8 @@ class ArchivePublisher(Trigger):
                 ],
                 keep_if_min_depths_are=['0'],
                 replace_value=restrict.DEPTH_REPLACE_VALUE,
-                also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5']
+                also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5'],
+                data_filter=dfilter,
             ))
 
             self._restricted_transformers.append(transformers.RemoveInterval(
@@ -346,7 +355,8 @@ class ArchivePublisher(Trigger):
                 keep_if_min_depths_are=['0'],
                 replace_value=restrict.DEPTH_REPLACE_VALUE,
                 also_replace_in_columns=['sampled_volume_l', 'flowmeter_length_m'],
-                also_remove_from_columns=['sample_id', 'shark_sample_id_md5']
+                also_remove_from_columns=['sample_id', 'shark_sample_id_md5'],
+                data_filter=dfilter,
             ))
 
     def _run_transformers(self) -> None:
@@ -357,6 +367,7 @@ class ArchivePublisher(Trigger):
         if self._package_is_unrestricted(self._controller.dataset_name):
             return
         for trans in self._restricted_transformers:
+            print(f'{trans=}')
             self._controller.transform(trans)
 
     def _run_validators_after(self) -> None:
