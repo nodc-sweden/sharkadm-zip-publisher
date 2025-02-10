@@ -5,12 +5,11 @@ import shutil
 from sharkadm import transformers, controller, exporters, adm_logger, validators
 from sharkadm import utils as sharkadm_utils
 from sharkadm.data import get_zip_archive_data_holder
-from sharkadm_zip_publisher import restrict
 from sharkadm.utils import data_filter
 
-from sharkadm_zip_publisher.trigger import Trigger
-
+from sharkadm_zip_publisher import restrict
 from sharkadm_zip_publisher import utils
+from sharkadm_zip_publisher.trigger import Trigger
 
 
 class ArchivePublisher(Trigger):
@@ -102,7 +101,13 @@ class ArchivePublisher(Trigger):
             encoding = 'cp1252'
             exporter = exporters.SHARKdataTxtAsGiven(encoding=encoding,
                                                      export_directory=data_holder.unzipped_archive_directory,
-                                                     export_file_name=data_holder.unzipped_archive_directory / 'shark_data.txt')
+                                                     export_file_name=data_holder.unzipped_archive_directory / 'shark_data.txt',
+                                                     exclude_columns=[
+                                                         'sample_sweref99tm_x',
+                                                         'sample_sweref99tm_y',
+                                                         'location_wb',
+                                                         'location_county',
+                                                     ])
             adm_logger.log_workflow(f'Encoding is {encoding} for package {path}', level=adm_logger.DEBUG)
 
             self._controller.export(exporter)
@@ -288,12 +293,22 @@ class ArchivePublisher(Trigger):
             # self._restricted_transformers.append(transformers.AddSamplePositionDD())
             self._restricted_transformers.append(transformers.AddSamplePositionSweref99tm())
             self._restricted_transformers.append(transformers.AddLocationWB())
+            self._restricted_transformers.append(transformers.AddLocationCounty())
             self._restricted_transformers.extend([
                 transformers.RemoveValuesInColumns(*restrict.DEPTH_COLUMNS, replace_value=restrict.DEPTH_REPLACE_VALUE, data_filter=dfilter),
                 transformers.RemoveValuesInColumns(*restrict.SECCHI_COLUMNS, replace_value=restrict.SECCHI_REPLACE_VALUE, data_filter=dfilter),
                 transformers.RemoveValuesInColumns(*restrict.COMMENT_COLUMNS, replace_value=restrict.COMMENT_REPLACE_VALUE, data_filter=dfilter),
 
                 transformers.RemoveRowsForParameters(*restrict.REMOVE_PARAMETER_ROWS, data_filter=dfilter),
+
+                transformers.RemoveRowsAtDepthRestriction(
+                    valid_data_types=[
+                        'epibenthos',
+                        'epibenthos_dropvideo',
+                        'zoobenthos',
+                    ],
+                    data_filter=dfilter
+                ),
 
                 transformers.RemoveDeepestDepthAtEachVisit(
                     valid_data_types=['PhysicalChemical'],

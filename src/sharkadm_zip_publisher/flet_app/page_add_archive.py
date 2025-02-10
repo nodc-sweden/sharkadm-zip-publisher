@@ -243,6 +243,7 @@ class PageAddArchive(ft.UserControl):
         self._create_reports()
         self._enable_buttons()
         self._log_publish_not_allowed(publish_not_allowed)
+        self.main_app.show_dialog('Allt klart!')
 
         if failing_zips:
             start_text = '1 felaktigt paket.'

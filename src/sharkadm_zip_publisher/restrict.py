@@ -10,9 +10,9 @@ RESTRICT_DATA = True
 
 
 SKIP_DATA_TYPES = [
-    'epibenthos',
-    'epibenthos_dropvideo',
-    'zoobenthos',
+    # 'epibenthos',
+    # 'epibenthos_dropvideo',
+    # 'zoobenthos',
     'profile'
 ]
 
