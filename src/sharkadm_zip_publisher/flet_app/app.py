@@ -557,7 +557,7 @@ class ZipArchivePublisherGUI:
         publisher_saves.add_control('page_config._option_trigger_config_import', self.page_config._option_trigger_config_import)
 
     def _check_paths(self):
-        for cont in [self._datasets_directory_dynamic, self._config_directory_dynamic]:
+        for cont in [self._datasets_directory_dynamic, self._zip_directory_dynamic, self._config_directory_dynamic]:
             value = cont.value.strip()
             if not value:
                 continue
