@@ -21,7 +21,7 @@ class PublisherSaves:
 
     @property
     def envs(self) -> list[str]:
-        return ['TEST', 'UTV', 'PROD', 'LOKALT']
+        return ['TEST', 'PROD', 'UTV', 'LOKALT']
 
     @property
     def selectable_envs(self) -> list[str]:

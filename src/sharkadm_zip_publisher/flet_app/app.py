@@ -298,7 +298,7 @@ class ZipArchivePublisherGUI:
     def _get_option_column(self) -> ft.Column:
         dd_options = [ft.dropdown.Option(value) for value in publisher_saves.selectable_envs]
         self._env_dropdown = ft.Dropdown(
-            width=100,
+            width=120,
             options=dd_options,
             on_change=self._on_change_env
         )
