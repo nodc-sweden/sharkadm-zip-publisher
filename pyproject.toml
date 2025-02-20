@@ -15,6 +15,9 @@ requires-python = "<3.14,>=3.11"
 readme = "README.md"
 license = {text = "MIT"}
 
+[project.gui-scripts]
+sharkadm-zip-publisher  = "sharkadm_zip_publisher.flet_app:run_app"
+
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
