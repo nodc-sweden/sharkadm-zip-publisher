@@ -155,7 +155,8 @@ class PageAddArchive(ft.UserControl):
                 sharkdata_dataset_directory=self.main_app.datasets_directory,
                 zip_directory=self.main_app.zip_directory,
                 trigger_url=self.main_app.trigger_url,
-                import_url=self.main_app.status_url
+                import_url=self.main_app.status_url,
+                restrict_data=self.main_app.restrict_data,
             )
 
         except Exception as e:
@@ -165,8 +166,61 @@ class PageAddArchive(ft.UserControl):
 
         if self.main_app.env.upper() == 'TEST':
             self._run_zip_test(publisher)
+        elif self.main_app.env.upper() == 'PROD':
+            self._run_zip_other(publisher)
+            self._change_env_with_same_options('UTV')
+            dev_publisher = ArchivePublisher(
+                sharkdata_dataset_directory=self.main_app.datasets_directory,
+                zip_directory=self.main_app.zip_directory,
+                trigger_url=self.main_app.trigger_url,
+                import_url=self.main_app.status_url,
+                restrict_data=False,
+            )
+            self._run_zip_other(dev_publisher)
+            self._change_env_with_same_options('PROD')
         else:
             self._run_zip_other(publisher)
+
+    def _change_env_with_same_options(self, env: str):
+        option_update = self._option_update_zip_archives.value
+        option_copy = self._option_copy_zip_archives_to_sharkdata.value
+        option_trigger_import = self._option_trigger_dataset_import.value
+        self.main_app.change_env(env)
+        self._option_update_zip_archives.value = option_update
+        self._option_copy_zip_archives_to_sharkdata.value = option_copy
+        self._option_trigger_dataset_import.value = option_trigger_import
+        self._option_update_zip_archives.update()
+        self._option_copy_zip_archives_to_sharkdata.update()
+        self._option_trigger_dataset_import.update()
+
+    def _do_publish_stuff(self, publisher: ArchivePublisher, path: pathlib.Path) -> list:
+        publish_not_allowed = []
+        p = pathlib.Path(path)
+        publisher.set_zip_archive_paths(path)
+        if self._option_update_zip_archives.value:
+            self.main_app.show_info(f'Uppdaterar {path}...')
+            info = publisher.update_zip_archives()
+            publish_not_allowed = info.get('publish_not_allowed')
+        if self._option_copy_zip_archives_to_sharkdata.value:
+            if publisher.publish_is_allowed(p.name, allow_all=False):
+                self.main_app.show_info(f'Kopierar {path}...')
+            publisher.copy_archives_to_sharkdata(allow_all=False)
+        return publish_not_allowed
+
+    def _trigger_and_copy(self):
+        if self._option_trigger_dataset_import.value:
+            self.main_app.trigger_import()
+        if self._option_copy_zip_archives_to_sharkdata.value:
+            self.main_app.show_info(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
+            sharkadm_utils.clear_all_in_temp_directory()
+
+    def _log_publish_not_allowed(self, publish_not_allowed: set):
+        if not publish_not_allowed:
+            return
+        self.main_app.log_workflow(dict(msg=''))
+        self.main_app.log_workflow(dict(msg='Not allowed to publish the following packages:'))
+        for name in publish_not_allowed:
+            self.main_app.log_workflow(dict(msg=f'    {name}'))
 
     def _run_zip_test(self, publisher: ArchivePublisher):
         failing_zips = []
@@ -174,15 +228,8 @@ class PageAddArchive(ft.UserControl):
         for path in sorted(self._zip_paths):
             p = pathlib.Path(path)
             try:
-                publisher.set_zip_archive_paths(path)
-                if self._option_update_zip_archives.value:
-                    self.main_app.show_info(f'Uppdaterar {path}...')
-                    info = publisher.update_zip_archives()
-                    publish_not_allowed.update(info.get('publish_not_allowed'))
-                if self._option_copy_zip_archives_to_sharkdata.value:
-                    if publisher.publish_is_allowed(p.name, allow_all=False):
-                        self.main_app.show_info(f'Kopierar {path}...')
-                    publisher.copy_archives_to_sharkdata(allow_all=False)
+                p_not_allowed = self._do_publish_stuff(publisher, path)
+                publish_not_allowed.update(p_not_allowed)
             except sharkadm_exceptions.SHARKadmException as e:
                 failing_zips.append(f'{p.name} -> {e}')
             except Exception as e:
@@ -192,18 +239,12 @@ class PageAddArchive(ft.UserControl):
                 ))
             finally:
                 self._enable_buttons()
-        if self._option_trigger_dataset_import.value:
-            self.main_app.trigger_import()
-        if self._option_copy_zip_archives_to_sharkdata.value:
-            self.main_app.show_info(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
-            sharkadm_utils.clear_all_in_temp_directory()
+        self._trigger_and_copy()
         self._create_reports()
         self._enable_buttons()
-        if publish_not_allowed:
-            self.main_app.log_workflow(dict(msg=''))
-            self.main_app.log_workflow(dict(msg='Not allowed to publish the following packages:'))
-            for name in publish_not_allowed:
-                self.main_app.log_workflow(dict(msg=f'    {name}'))
+        self._log_publish_not_allowed(publish_not_allowed)
+        self.main_app.show_dialog('Allt klart!')
+
         if failing_zips:
             start_text = '1 felaktigt paket.'
             if len(failing_zips) > 1:
@@ -220,28 +261,12 @@ class PageAddArchive(ft.UserControl):
         publish_not_allowed = set()
         try:
             for path in sorted(self._zip_paths):
-                p = pathlib.Path(path)
-                publisher.set_zip_archive_paths(path)
-                if self._option_update_zip_archives.value:
-                    self.main_app.show_info(f'Uppdaterar {path}...')
-                    info = publisher.update_zip_archives()
-                    publish_not_allowed.update(info.get('publish_not_allowed'))
-                if self._option_copy_zip_archives_to_sharkdata.value:
-                    if publisher.publish_is_allowed(p.name, allow_all=False):
-                        self.main_app.show_info(f'Kopierar {path}...')
-                    publisher.copy_archives_to_sharkdata(allow_all=False)
-            if self._option_trigger_dataset_import.value:
-                self.main_app.trigger_import()
-            if self._option_copy_zip_archives_to_sharkdata.value:
-                self.main_app.show_info(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
-                sharkadm_utils.clear_all_in_temp_directory()
+                p_not_allowed = self._do_publish_stuff(publisher, path)
+                publish_not_allowed.update(p_not_allowed)
+            self._trigger_and_copy()
             self._create_reports()
             self._enable_buttons()
-            if publish_not_allowed:
-                self.main_app.log_workflow(dict(msg=''))
-                self.main_app.log_workflow(dict(msg='Not allowed to publish the following packages:'))
-                for name in publish_not_allowed:
-                    self.main_app.log_workflow(dict(msg=f'    {name}'))
+            self._log_publish_not_allowed(publish_not_allowed)
             self.main_app.show_dialog('Allt klart!')
         except Exception as e:
             self.main_app.show_dialog(f'Något gick fel:\n{e}')
@@ -256,50 +281,3 @@ class PageAddArchive(ft.UserControl):
                            export_directory=utils.LOG_DIRECTORY, tag='transformation')
         create_xlsx_report(adm_logger.reset_filter().filter('>info', 'validation'),
                            export_directory=utils.LOG_DIRECTORY, tag='validation')
-
-    # def _old_run_zip(self, *args):
-    #     try:
-    #         if not any([self._option_trigger_dataset_import.value, self._option_update_zip_archives.value, self._option_copy_zip_archives_to_sharkdata.value]):
-    #             self.main_app.show_dialog('Du har inte valt något att göra!')
-    #             return
-    #         if not self._zip_paths and any([self._option_update_zip_archives.value, self._option_copy_zip_archives_to_sharkdata.value]):
-    #             self.main_app.show_dialog('Inga zip-arkiv valda!')
-    #             return
-    #         if self._zip_paths and self._option_copy_zip_archives_to_sharkdata.value and not self.main_app.datasets_directory:
-    #             self.main_app.show_dialog('Inga mapp för att lägga remove.txt vald!')
-    #             return
-    #         if self._option_trigger_dataset_import.value and not all([self.main_app.trigger_url, self.main_app.status_url]):
-    #             self.main_app.show_dialog('Du måste fylla i fälten för URL!')
-    #             return
-    #
-    #         self._disable_buttons()
-    #         publisher_saves.export_saves()
-    #
-    #         sharkadm_utils.clear_temp_directory()
-    #
-    #         publisher = ArchivePublisher(
-    #             sharkdata_dataset_directory=self.main_app.datasets_directory,
-    #             zip_directory=self.main_app.zip_directory,
-    #             trigger_url=self.main_app.trigger_url,
-    #             import_url=self.main_app.status_url
-    #         )
-    #
-    #         for path in sorted(self._zip_paths):
-    #             publisher.set_zip_archive_paths(path)
-    #             if self._option_update_zip_archives.value:
-    #                 self.main_app.show_info(f'Uppdaterar {path}...')
-    #                 info = publisher.update_zip_archives()
-    #             if self._option_copy_zip_archives_to_sharkdata.value:
-    #                 self.main_app.show_info(f'Kopierar {path}...')
-    #                 publisher.copy_archives_to_sharkdata()
-    #         if self._option_trigger_dataset_import.value:
-    #             self.main_app.trigger_import()
-    #         self.main_app.show_info(f'Trying to delete everything in temp directory: {sharkadm_utils.TEMP_DIRECTORY}')
-    #         sharkadm_utils.clear_all_in_temp_directory()
-    #         create_xlsx_report(adm_logger, export_directory=utils.LOG_DIRECTORY)
-    #         self._enable_buttons()
-    #         self.main_app.show_dialog('Allt klart!')
-    #     except Exception as e:
-    #         self.main_app.show_dialog(f'Något gick fel:\n{e}')
-    #         self._enable_buttons()
-    #         raise

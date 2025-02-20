@@ -5,11 +5,11 @@ import shutil
 from sharkadm import transformers, controller, exporters, adm_logger, validators
 from sharkadm import utils as sharkadm_utils
 from sharkadm.data import get_zip_archive_data_holder
+from sharkadm.utils import data_filter
+
 from sharkadm_zip_publisher import restrict
-
-from sharkadm_zip_publisher.trigger import Trigger
-
 from sharkadm_zip_publisher import utils
+from sharkadm_zip_publisher.trigger import Trigger
 
 
 class ArchivePublisher(Trigger):
@@ -18,7 +18,8 @@ class ArchivePublisher(Trigger):
                  sharkdata_dataset_directory=None,
                  zip_directory=None,
                  trigger_url=None,
-                 import_url=None
+                 import_url=None,
+                 restrict_data=None,  # If None restriction is decided from restrict.RESTRICT_DATA
                  ):
         self._config = dict(
             sharkdata_dataset_directory=sharkdata_dataset_directory,
@@ -35,6 +36,8 @@ class ArchivePublisher(Trigger):
         self._updated_zip_archive_paths: list[pathlib.Path] = []
         self._publish_not_allowed_packs: list[pathlib.Path] = []
 
+        self._restrict_data = restrict_data
+
         self._controller = controller.SHARKadmController()
 
         self._create_transformers()
@@ -50,11 +53,17 @@ class ArchivePublisher(Trigger):
         return False
 
     @property
+    def restrict_data(self):
+        if self._restrict_data is None:
+            return restrict.RESTRICT_DATA
+        return self._restrict_data
+
+    @property
     def zip_archive_paths(self):
         return sorted(self._updated_zip_archive_paths) or sorted(self._zip_archive_paths)
 
     def _package_is_ok_to_publish(self, data_holder) -> bool:
-        if not restrict.RESTRICT_DATA:
+        if not self.restrict_data:
             return True
         if data_holder.data_type not in restrict.SKIP_DATA_TYPES:
             return True
@@ -66,7 +75,7 @@ class ArchivePublisher(Trigger):
         return False
 
     def _restrict_data_holder(self, data_holder) -> None:
-        if not restrict.RESTRICT_DATA:
+        if not self.restrict_data:
             return
         if self._package_is_unrestricted(data_holder.zip_archive_path.name):
             return
@@ -92,7 +101,13 @@ class ArchivePublisher(Trigger):
             encoding = 'cp1252'
             exporter = exporters.SHARKdataTxtAsGiven(encoding=encoding,
                                                      export_directory=data_holder.unzipped_archive_directory,
-                                                     export_file_name=data_holder.unzipped_archive_directory / 'shark_data.txt')
+                                                     export_file_name=data_holder.unzipped_archive_directory / 'shark_data.txt',
+                                                     exclude_columns=[
+                                                         'sample_sweref99tm_x',
+                                                         'sample_sweref99tm_y',
+                                                         'location_wb',
+                                                         'location_county',
+                                                     ])
             adm_logger.log_workflow(f'Encoding is {encoding} for package {path}', level=adm_logger.DEBUG)
 
             self._controller.export(exporter)
@@ -107,7 +122,7 @@ class ArchivePublisher(Trigger):
     def publish_is_allowed(self, pack_name: str, allow_all: bool = False) -> bool:
         if allow_all:
             return True
-        if not restrict.RESTRICT_DATA:
+        if not self.restrict_data:
             return True
         if pack_name in self._publish_not_allowed_packs:
             return False
@@ -156,7 +171,7 @@ class ArchivePublisher(Trigger):
     # def _copy_archives_to_sharkdata(self):
     #     target_root = pathlib.Path(self._config['sharkdata_dataset_directory'])
     #     for source_path in self.zip_archive_paths:
-    #         if restrict.RESTRICT_DATA and source_path.name in self._publish_not_allowed_packs:
+    #         if self.restrict_data and source_path.name in self._publish_not_allowed_packs:
     #             continue
     #         target_path = target_root / source_path.name
     #         shutil.copy2(source_path, target_path)
@@ -174,7 +189,7 @@ class ArchivePublisher(Trigger):
     #     zips_to_remove = []
     #     zips_to_copy = []
     #     for source_path in self.zip_archive_paths:
-    #         if restrict.RESTRICT_DATA and source_path.name in self._publish_not_allowed_packs:
+    #         if self.restrict_data and source_path.name in self._publish_not_allowed_packs:
     #             continue
     #         source_name_no_date = utils.get_zip_name_without_date(source_path.stem)
     #         current_zip = current_mapped_zips.get(source_name_no_date)
@@ -193,8 +208,11 @@ class ArchivePublisher(Trigger):
     #         shutil.copy2(source_path, target_path)
 
     @property
-    def all_transformers(self) -> list[transformers.Transformer]:
-        return self._transformers + self._restricted_transformers
+    def all_transformers(self) -> dict[str, list[transformers.Transformer]]:
+        return dict(
+            mandatory=self._transformers,
+            restricted=self._restricted_transformers
+        )
 
     @property
     def validators_after(self) -> list[validators.Validator]:
@@ -207,7 +225,7 @@ class ArchivePublisher(Trigger):
     def _create_validators_after(self) -> None:
         self._validators_after = []
 
-        if not restrict.RESTRICT_DATA:
+        if not self.restrict_data:
             return
         self._validators_after.append(
             validators.AssertMinMaxDepthCombination(
@@ -270,19 +288,35 @@ class ArchivePublisher(Trigger):
             ]
 
         self._restricted_transformers = []
-        if restrict.RESTRICT_DATA:
+        if self.restrict_data:
+            dfilter = data_filter.DataFilterRestrictDepth()
+            # self._restricted_transformers.append(transformers.AddSamplePositionDD())
+            self._restricted_transformers.append(transformers.AddSamplePositionSweref99tm())
+            self._restricted_transformers.append(transformers.AddLocationWB())
+            self._restricted_transformers.append(transformers.AddLocationCounty())
             self._restricted_transformers.extend([
-                transformers.RemoveValuesInColumns(*restrict.DEPTH_COLUMNS, replace_value=restrict.DEPTH_REPLACE_VALUE),
-                transformers.RemoveValuesInColumns(*restrict.SECCHI_COLUMNS, replace_value=restrict.SECCHI_REPLACE_VALUE),
-                transformers.RemoveValuesInColumns(*restrict.COMMENT_COLUMNS, replace_value=restrict.COMMENT_REPLACE_VALUE),
+                transformers.RemoveValuesInColumns(*restrict.DEPTH_COLUMNS, replace_value=restrict.DEPTH_REPLACE_VALUE, data_filter=dfilter),
+                transformers.RemoveValuesInColumns(*restrict.SECCHI_COLUMNS, replace_value=restrict.SECCHI_REPLACE_VALUE, data_filter=dfilter),
+                transformers.RemoveValuesInColumns(*restrict.COMMENT_COLUMNS, replace_value=restrict.COMMENT_REPLACE_VALUE, data_filter=dfilter),
 
-                transformers.RemoveRowsForParameters(*restrict.REMOVE_PARAMETER_ROWS),
+                transformers.RemoveRowsForParameters(*restrict.REMOVE_PARAMETER_ROWS, data_filter=dfilter),
+
+                transformers.RemoveRowsAtDepthRestriction(
+                    valid_data_types=[
+                        'epibenthos',
+                        'epibenthos_dropvideo',
+                        'zoobenthos',
+                    ],
+                    data_filter=dfilter
+                ),
 
                 transformers.RemoveDeepestDepthAtEachVisit(
                     valid_data_types=['PhysicalChemical'],
                     depth_column='sample_depth_m',
                     also_remove_from_columns=['sample_id', 'shark_sample_id'],
-                    replace_value=restrict.DEPTH_REPLACE_VALUE
+                    replace_value=restrict.DEPTH_REPLACE_VALUE,
+                    keep_single_depth_at_surface=True,
+                    data_filter=dfilter,
                 ),
             ])
             for col in ['sample_depth_m', 'sample_min_depth_m', 'sample_max_depth_m']:
@@ -290,7 +324,8 @@ class ArchivePublisher(Trigger):
                     valid_data_types=['Bacterioplankton', 'Harbourporpoise'],
                     depth_column=col,
                     also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5'],
-                    replace_value=restrict.DEPTH_REPLACE_VALUE
+                    replace_value=restrict.DEPTH_REPLACE_VALUE,
+                    data_filter=dfilter,
                 ))
 
             self._restricted_transformers.append(transformers.RemoveInterval(
@@ -304,7 +339,8 @@ class ArchivePublisher(Trigger):
                 ],
                 keep_if_min_depths_are=['0'],
                 replace_value=restrict.DEPTH_REPLACE_VALUE,
-                also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5']
+                also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5'],
+                data_filter=dfilter,
             ))
 
             self._restricted_transformers.append(transformers.RemoveInterval(
@@ -319,7 +355,8 @@ class ArchivePublisher(Trigger):
                 ],
                 keep_if_min_depths_are=['0'],
                 replace_value=restrict.DEPTH_REPLACE_VALUE,
-                also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5']
+                also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5'],
+                data_filter=dfilter,
             ))
 
             self._restricted_transformers.append(transformers.RemoveInterval(
@@ -333,17 +370,19 @@ class ArchivePublisher(Trigger):
                 keep_if_min_depths_are=['0'],
                 replace_value=restrict.DEPTH_REPLACE_VALUE,
                 also_replace_in_columns=['sampled_volume_l', 'flowmeter_length_m'],
-                also_remove_from_columns=['sample_id', 'shark_sample_id_md5']
+                also_remove_from_columns=['sample_id', 'shark_sample_id_md5'],
+                data_filter=dfilter,
             ))
 
     def _run_transformers(self) -> None:
         for trans in self._transformers:
             self._controller.transform(trans)
-        if not restrict.RESTRICT_DATA:
+        if not self.restrict_data:
             return
         if self._package_is_unrestricted(self._controller.dataset_name):
             return
         for trans in self._restricted_transformers:
+            print(f'{trans=}')
             self._controller.transform(trans)
 
     def _run_validators_after(self) -> None:

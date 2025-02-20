@@ -31,10 +31,15 @@ class PageTransformers(ft.UserControl):
 
     def _set_transformers_column(self) -> None:
         pub = ArchivePublisher()
-        for tran in pub.all_transformers:
-            # text = f'{tran.description} ({tran.__class__.__name__})'
-
+        info = pub.all_transformers
+        self.lv.controls.append(ft.Text('Utförs alltid', weight=ft.FontWeight('bold')))
+        for tran in info['mandatory']:
             self.lv.controls.append(ft.Row([ft.Text(tran.description),
                                             ft.Text(f'({tran.__class__.__name__})')],
                                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN))
-            # self.lv.controls.append(ft.Text(text))
+        self.lv.controls.append(ft.Divider())
+        self.lv.controls.append(ft.Text('Utförs om begränsad åtkomst är vald', weight=ft.FontWeight('bold')))
+        for tran in info['restricted']:
+            self.lv.controls.append(ft.Row([ft.Text(tran.description),
+                                            ft.Text(f'({tran.__class__.__name__})')],
+                                           alignment=ft.MainAxisAlignment.SPACE_BETWEEN))
