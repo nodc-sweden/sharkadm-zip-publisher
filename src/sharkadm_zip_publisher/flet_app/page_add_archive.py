@@ -273,6 +273,7 @@ class PageAddArchive(ft.UserControl):
         self._enable_buttons()
         self._log_publish_not_allowed(publish_not_allowed)
         if not self._run:
+            sharkadm_utils.clear_all_in_temp_directory()
             self.main_app.show_dialog(f'Körningen avbruten av användaren ({nr} av {tot_nr} körda)!')
         elif failing_zips:
             start_text = '1 felaktigt paket.'
@@ -302,6 +303,7 @@ class PageAddArchive(ft.UserControl):
             self._enable_buttons()
             self._log_publish_not_allowed(publish_not_allowed)
             if not self._run:
+                sharkadm_utils.clear_all_in_temp_directory()
                 self.main_app.show_dialog(f'Körningen avbruten av användaren ({nr} av {tot_nr} körda)!')
             else:
                 self.main_app.show_dialog('Allt klart!')
