@@ -22,6 +22,7 @@ class PageAddArchive(ft.UserControl):
         super().__init__()
         self.main_app: 'ZipArchivePublisherGUI' = main_app
         self._zip_paths = set()
+        self._run = None
 
     def build(self):
         self._zip_paths_column = ft.Column(tight=True, scroll=ft.ScrollMode.ALWAYS)
@@ -40,6 +41,8 @@ class PageAddArchive(ft.UserControl):
         container_options = ft.Container(bgcolor=COLOR_DATASETS_MAIN,
                                          content=options_column)
         self._go_dataset_button = ft.ElevatedButton(text='Kör', on_click=self._run_zip, bgcolor='green')
+        self._abort_button = ft.ElevatedButton(text='Avbryt', on_click=self._abort)
+        self._abort_button.disabled = True
 
         self._nr_zip_packages = ft.Text('Inga paket valda')
 
@@ -58,7 +61,10 @@ class PageAddArchive(ft.UserControl):
             ]),
             container_paths,
             container_options,
-            self._go_dataset_button
+            ft.Row([
+                self._go_dataset_button,
+                self._abort_button,
+            ]),
         ], expand=True)
 
         return col
@@ -81,6 +87,17 @@ class PageAddArchive(ft.UserControl):
                 ]
             )
         return row
+
+    def _abort(self, *args):
+        msg = 'Avbryter körning...'
+        self.main_app.show_info(msg)
+        self._abort_button.text = msg
+        self._abort_button.update()
+        self._run = False
+
+    def _reset_abort_button(self) -> None:
+        self._abort_button.text = 'Avbryt'
+        self._abort_button.update()
 
     def _on_pick_zip_files(self, e: ft.FilePickerResultEvent) -> None:
         if not e.files:
@@ -120,6 +137,9 @@ class PageAddArchive(ft.UserControl):
         ]:
             btn.disabled = False
             btn.update()
+        self._abort_button.disabled = True
+        self._abort_button.text = 'Avbryt'
+        self._abort_button.update()
 
     def _disable_buttons(self):
         for btn in [
@@ -127,6 +147,9 @@ class PageAddArchive(ft.UserControl):
         ]:
             btn.disabled = True
             btn.update()
+        self._abort_button.disabled = False
+        self._abort_button.text = 'Avbryt'
+        self._abort_button.update()
 
     def _run_zip(self, *args):
         try:
@@ -225,7 +248,12 @@ class PageAddArchive(ft.UserControl):
     def _run_zip_test(self, publisher: ArchivePublisher):
         failing_zips = []
         publish_not_allowed = set()
-        for path in sorted(self._zip_paths):
+        self._run = True
+        tot_nr = len(self._zip_paths)
+        nr = 0
+        for nr, path in enumerate(sorted(self._zip_paths)):
+            if not self._run:
+                break
             p = pathlib.Path(path)
             try:
                 p_not_allowed = self._do_publish_stuff(publisher, path)
@@ -239,13 +267,15 @@ class PageAddArchive(ft.UserControl):
                 ))
             finally:
                 self._enable_buttons()
+                self._reset_abort_button()
         self._trigger_and_copy()
         self._create_reports()
         self._enable_buttons()
         self._log_publish_not_allowed(publish_not_allowed)
-        self.main_app.show_dialog('Allt klart!')
-
-        if failing_zips:
+        if not self._run:
+            sharkadm_utils.clear_all_in_temp_directory()
+            self.main_app.show_dialog(f'Körningen avbruten av användaren ({nr} av {tot_nr} körda)!')
+        elif failing_zips:
             start_text = '1 felaktigt paket.'
             if len(failing_zips) > 1:
                 start_text = f'{len((failing_zips))} felaktiga paket.'
@@ -260,20 +290,30 @@ class PageAddArchive(ft.UserControl):
     def _run_zip_other(self, publisher: ArchivePublisher):
         publish_not_allowed = set()
         try:
-            for path in sorted(self._zip_paths):
+            self._run = True
+            tot_nr = len(self._zip_paths)
+            nr = 0
+            for nr, path in enumerate(sorted(self._zip_paths)):
+                if not self._run:
+                    break
                 p_not_allowed = self._do_publish_stuff(publisher, path)
                 publish_not_allowed.update(p_not_allowed)
             self._trigger_and_copy()
             self._create_reports()
             self._enable_buttons()
             self._log_publish_not_allowed(publish_not_allowed)
-            self.main_app.show_dialog('Allt klart!')
+            if not self._run:
+                sharkadm_utils.clear_all_in_temp_directory()
+                self.main_app.show_dialog(f'Körningen avbruten av användaren ({nr} av {tot_nr} körda)!')
+            else:
+                self.main_app.show_dialog('Allt klart!')
         except Exception as e:
             self.main_app.show_dialog(f'Något gick fel:\n{e}')
             self._enable_buttons()
             raise
         finally:
             self._enable_buttons()
+            self._reset_abort_button()
 
     def _create_reports(self) -> None:
         create_xlsx_report(adm_logger.reset_filter(), export_directory=utils.LOG_DIRECTORY)
