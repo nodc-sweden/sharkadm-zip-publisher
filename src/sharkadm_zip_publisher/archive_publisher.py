@@ -302,6 +302,7 @@ class ArchivePublisher(Trigger):
                 transformers.RemoveRowsForParameters(*restrict.REMOVE_PARAMETER_ROWS, data_filter=dfilter),
 
                 transformers.RemoveRowsAtDepthRestriction(
+                    valid_data_types=[],
                     # valid_data_types=[
                     #     'epibenthos',
                     #     'epibenthos_dropvideo',
