@@ -98,9 +98,9 @@ class ArchivePublisher(Trigger):
             self._controller.set_data_holder(data_holder)
             self._run_transformers()
             self._run_validators_after()
-            if not len(self._controller.data):
-                adm_logger.log_workflow(f'Skipping empty package: {self._controller.dataset_name}', level=adm_logger.WARNING)
-                continue
+            # if not len(self._controller.data):
+            #     adm_logger.log_workflow(f'Skipping empty package: {self._controller.dataset_name}', level=adm_logger.WARNING)
+            #     continue
             encoding = 'cp1252'
             exporter = exporters.SHARKdataTxtAsGiven(encoding=encoding,
                                                      export_directory=data_holder.unzipped_archive_directory,
