@@ -288,6 +288,7 @@ class ArchivePublisher(Trigger):
             transformers.CreateFakeFullDates(),
             transformers.ManualSealPathology(),
             transformers.ManualHarbourPorpoise(),
+            transformers.AddDatatypePlanktonBarcoding(),
             ]
 
         self._restricted_transformers = []
