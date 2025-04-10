@@ -394,7 +394,7 @@ class ArchivePublisher(Trigger):
         if self._package_is_unrestricted(self._controller.dataset_name):
             return
         for trans in self._restricted_transformers:
-            print(f'{trans=}')
+            # print(f'{trans=}')
             self._controller.transform(trans)
 
     def _run_validators_after(self) -> None:
