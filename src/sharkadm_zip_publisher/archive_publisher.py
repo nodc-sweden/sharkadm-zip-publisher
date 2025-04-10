@@ -297,10 +297,20 @@ class ArchivePublisher(Trigger):
 
         self._restricted_transformers = []
         if self.restrict_data:
-            dfilter = data_filter.PolarsDataFilterApprovedData()
+            dfilter_approved = data_filter.PolarsDataFilterApprovedData()
+            dfilter_r = data_filter.PolarsDataFilterRestrictArea()
             self._restricted_transformers.extend([
+                transformers.PolarsAddSamplePositionSweref99tm(),
+                transformers.PolarsAddLocationRA(),
+                transformers.PolarsAddLocationRB(),
+                transformers.PolarsAddLocationRC(),
+                transformers.PolarsAddLocationRG(),
+                transformers.PolarsAddLocationRH(),
+                transformers.PolarsAddLocationRO(),
+                transformers.PolarsAddLocationR(),
                 transformers.PolarsAddApprovedKeyColumn(),
-                transformers.PolarsKeepMask(data_filter=dfilter)
+                transformers.PolarsKeepMask(data_filter=dfilter_approved),
+                transformers.PolarsRemoveMask(data_filter=dfilter_r)
             ])
 
             # dfilter = data_filter.DataFilterRestrictDepth()
