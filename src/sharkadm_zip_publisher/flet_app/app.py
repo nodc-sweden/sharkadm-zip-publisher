@@ -283,17 +283,17 @@ class ZipArchivePublisherGUI:
     def _open_datasets_directory(self, event=None):
         if not self.datasets_directory:
             return
-        sharkadm_utils.open_directory(self.datasets_directory)
+        sharkadm_utils.open_file_or_directory(self.datasets_directory)
 
     def _open_zip_directory(self, event=None):
         if not self.zip_directory:
             return
-        sharkadm_utils.open_directory(self.zip_directory)
+        sharkadm_utils.open_file_or_directory(self.zip_directory)
 
     def _open_config_directory(self, event=None):
         if not self.config_directory:
             return
-        sharkadm_utils.open_directory(self.config_directory)
+        sharkadm_utils.open_file_or_directory(self.config_directory)
 
     def _get_option_column(self) -> ft.Column:
         dd_options = [ft.dropdown.Option(value) for value in publisher_saves.selectable_envs]

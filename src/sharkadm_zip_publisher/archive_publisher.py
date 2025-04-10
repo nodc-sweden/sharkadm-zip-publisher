@@ -4,7 +4,7 @@ import shutil
 
 from sharkadm import transformers, controller, exporters, adm_logger, validators
 from sharkadm import utils as sharkadm_utils
-from sharkadm.data import get_zip_archive_data_holder
+from sharkadm.data import get_zip_archive_data_holder, get_polars_zip_archive_data_holder
 from sharkadm.utils import data_filter
 
 from sharkadm_zip_publisher import restrict
@@ -30,22 +30,24 @@ class ArchivePublisher(Trigger):
         super().__init__(**self._config)
 
         self._zip_archive_paths: list[pathlib.Path] = []
-        self._transformers: list[transformers.Transformer] = []
-        self._restricted_transformers: list[transformers.Transformer] = []
+        self._transformers: list[transformers.PolarsTransformer] = []
+        self._restricted_transformers: list[transformers.PolarsTransformer] = []
         self._validators_after: list[validators.Validator] = []
         self._updated_zip_archive_paths: list[pathlib.Path] = []
         self._publish_not_allowed_packs: list[pathlib.Path] = []
 
         self._restrict_data = restrict_data
 
-        self._controller = controller.SHARKadmController()
+        # self._controller = controller.SHARKadmController()
+        self._controller = controller.SHARKadmPolarsController()
 
         self._create_transformers()
-        self._create_validators_after()
+        # self._create_validators_after()
 
         self._unrestricted_packages = restrict.get_unrestricted_packages()
 
     def _package_is_unrestricted(self, name: str) -> bool:
+        return False
         name_no_date = utils.get_zip_name_without_date(name)
         for pack in self._unrestricted_packages:
             if pack.upper() == name_no_date.upper():
@@ -91,7 +93,8 @@ class ArchivePublisher(Trigger):
         self._updated_zip_archive_paths = []
         self._publish_not_allowed_packs = []
         for path in self._zip_archive_paths:
-            data_holder = get_zip_archive_data_holder(path)
+            # data_holder = get_zip_archive_data_holder(path)
+            data_holder = get_polars_zip_archive_data_holder(path)
             if not self._package_is_ok_to_publish(data_holder):
                 publish_not_allowed.append(f'{path.name} (data type {data_holder.data_type} not allowed)')
                 self._publish_not_allowed_packs.append(path.name)
@@ -113,6 +116,7 @@ class ArchivePublisher(Trigger):
                                                      ])
             adm_logger.log_workflow(f'Encoding is {encoding} for package {path}', level=adm_logger.DEBUG)
 
+            self._controller.transform(transformers.ConvertFromPolarsToPandas())
             self._controller.export(exporter)
             self._restrict_data_holder(data_holder)
             rezipped_archive_path = self._zip_directory(data_holder.unzipped_archive_directory)
@@ -277,107 +281,110 @@ class ArchivePublisher(Trigger):
 
     def _create_transformers(self):
         self._transformers = [
-            transformers.AddSwedishProjectName(),
-            transformers.AddSwedishSampleOrderer(),
-            transformers.AddSwedishSamplingLaboratory(),
-            transformers.AddSwedishAnalyticalLaboratory(),
-            transformers.AddSwedishReportingInstitute(),
-            transformers.FixTimeFormat(),
-            transformers.AddReportedDates(),
-            transformers.AddSampleDate(),
-            transformers.CreateFakeFullDates(),
-            transformers.ManualSealPathology(),
-            transformers.ManualHarbourPorpoise(),
-            transformers.AddDatatypePlanktonBarcoding(),
+            transformers.PolarsAddSwedishProjectName(),
+            transformers.PolarsAddSwedishSampleOrderer(),
+            transformers.PolarsAddSwedishSamplingLaboratory(),
+            transformers.PolarsAddSwedishAnalyticalLaboratory(),
+            transformers.PolarsAddSwedishReportingInstitute(),
+            transformers.PolarsFixTimeFormat(),
+            transformers.PolarsAddReportedDates(),
+            transformers.PolarsAddSampleDate(),
+            # transformers.PolarsCreateFakeFullDates(),
+            # transformers.PolarsManualSealPathology(),
+            # transformers.PolarsManualHarbourPorpoise(),
+            # transformers.PolarsAddDatatypePlanktonBarcoding(),
             ]
 
         self._restricted_transformers = []
         if self.restrict_data:
-            dfilter = data_filter.DataFilterRestrictDepth()
+            dfilter = data_filter.PolarsDataFilterApprovedData()
+            self._restricted_transformers.append(transformers.PolarsKeepMask(data_filter=dfilter))
+
+            # dfilter = data_filter.DataFilterRestrictDepth()
             # self._restricted_transformers.append(transformers.AddSamplePositionDD())
-            self._restricted_transformers.append(transformers.AddSamplePositionSweref99tm())
-            self._restricted_transformers.append(transformers.AddLocationWB())
-            self._restricted_transformers.append(transformers.AddLocationCounty())
-            self._restricted_transformers.extend([
-                transformers.RemoveValuesInColumns(*restrict.DEPTH_COLUMNS, replace_value=restrict.DEPTH_REPLACE_VALUE, data_filter=dfilter),
-                transformers.RemoveValuesInColumns(*restrict.SECCHI_COLUMNS, replace_value=restrict.SECCHI_REPLACE_VALUE, data_filter=dfilter),
-                transformers.RemoveValuesInColumns(*restrict.COMMENT_COLUMNS, replace_value=restrict.COMMENT_REPLACE_VALUE, data_filter=dfilter),
-
-                transformers.RemoveRowsForParameters(*restrict.REMOVE_PARAMETER_ROWS, data_filter=dfilter),
-
-                transformers.RemoveRowsAtDepthRestriction(
-                    valid_data_types=[],
-                    # valid_data_types=[
-                    #     'epibenthos',
-                    #     'epibenthos_dropvideo',
-                    #     'zoobenthos',
-                    # ],
-                    data_filter=dfilter
-                ),
-
-                transformers.RemoveDeepestDepthAtEachVisit(
-                    valid_data_types=['PhysicalChemical'],
-                    depth_column='sample_depth_m',
-                    also_remove_from_columns=['sample_id', 'shark_sample_id'],
-                    replace_value=restrict.DEPTH_REPLACE_VALUE,
-                    keep_single_depth_at_surface=True,
-                    data_filter=dfilter,
-                ),
-            ])
-            for col in ['sample_depth_m', 'sample_min_depth_m', 'sample_max_depth_m']:
-                self._restricted_transformers.append(transformers.RemoveDeepestDepthAtEachVisit(
-                    valid_data_types=['Bacterioplankton', 'Harbourporpoise'],
-                    depth_column=col,
-                    also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5'],
-                    replace_value=restrict.DEPTH_REPLACE_VALUE,
-                    data_filter=dfilter,
-                ))
-
-            self._restricted_transformers.append(transformers.RemoveInterval(
-                valid_data_types=['Chlorophyll'],
-                keep_intervals=[
-                    '0-5',
-                    '0-10',
-                    '0-14',
-                    '0-20',
-                    '10-20',
-                ],
-                keep_if_min_depths_are=['0'],
-                replace_value=restrict.DEPTH_REPLACE_VALUE,
-                also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5'],
-                data_filter=dfilter,
-            ))
-
-            self._restricted_transformers.append(transformers.RemoveInterval(
-                valid_data_types=['Phytoplankton'],
-                keep_intervals=[
-                    '0-0'
-                    '0-5',
-                    '0-10',
-                    '0-14',
-                    '0-20',
-                    '10-20',
-                ],
-                keep_if_min_depths_are=['0'],
-                replace_value=restrict.DEPTH_REPLACE_VALUE,
-                also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5'],
-                data_filter=dfilter,
-            ))
-
-            self._restricted_transformers.append(transformers.RemoveInterval(
-                valid_data_types=['Zooplankton'],
-                keep_intervals=[
-                    '0-25',
-                    '0-30',
-                    '30-60',
-                    '0-35',
-                ],
-                keep_if_min_depths_are=['0'],
-                replace_value=restrict.DEPTH_REPLACE_VALUE,
-                also_replace_in_columns=['sampled_volume_l', 'flowmeter_length_m'],
-                also_remove_from_columns=['sample_id', 'shark_sample_id_md5'],
-                data_filter=dfilter,
-            ))
+            # self._restricted_transformers.append(transformers.AddSamplePositionSweref99tm())
+            # self._restricted_transformers.append(transformers.AddLocationWB())
+            # self._restricted_transformers.append(transformers.AddLocationCounty())
+            # self._restricted_transformers.extend([
+            #     transformers.RemoveValuesInColumns(*restrict.DEPTH_COLUMNS, replace_value=restrict.DEPTH_REPLACE_VALUE, data_filter=dfilter),
+            #     transformers.RemoveValuesInColumns(*restrict.SECCHI_COLUMNS, replace_value=restrict.SECCHI_REPLACE_VALUE, data_filter=dfilter),
+            #     transformers.RemoveValuesInColumns(*restrict.COMMENT_COLUMNS, replace_value=restrict.COMMENT_REPLACE_VALUE, data_filter=dfilter),
+            #
+            #     transformers.RemoveRowsForParameters(*restrict.REMOVE_PARAMETER_ROWS, data_filter=dfilter),
+            #
+            #     transformers.RemoveRowsAtDepthRestriction(
+            #         valid_data_types=[],
+            #         # valid_data_types=[
+            #         #     'epibenthos',
+            #         #     'epibenthos_dropvideo',
+            #         #     'zoobenthos',
+            #         # ],
+            #         data_filter=dfilter
+            #     ),
+            #
+            #     transformers.RemoveDeepestDepthAtEachVisit(
+            #         valid_data_types=['PhysicalChemical'],
+            #         depth_column='sample_depth_m',
+            #         also_remove_from_columns=['sample_id', 'shark_sample_id'],
+            #         replace_value=restrict.DEPTH_REPLACE_VALUE,
+            #         keep_single_depth_at_surface=True,
+            #         data_filter=dfilter,
+            #     ),
+            # ])
+            # for col in ['sample_depth_m', 'sample_min_depth_m', 'sample_max_depth_m']:
+            #     self._restricted_transformers.append(transformers.RemoveDeepestDepthAtEachVisit(
+            #         valid_data_types=['Bacterioplankton', 'Harbourporpoise'],
+            #         depth_column=col,
+            #         also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5'],
+            #         replace_value=restrict.DEPTH_REPLACE_VALUE,
+            #         data_filter=dfilter,
+            #     ))
+            #
+            # self._restricted_transformers.append(transformers.RemoveInterval(
+            #     valid_data_types=['Chlorophyll'],
+            #     keep_intervals=[
+            #         '0-5',
+            #         '0-10',
+            #         '0-14',
+            #         '0-20',
+            #         '10-20',
+            #     ],
+            #     keep_if_min_depths_are=['0'],
+            #     replace_value=restrict.DEPTH_REPLACE_VALUE,
+            #     also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5'],
+            #     data_filter=dfilter,
+            # ))
+            #
+            # self._restricted_transformers.append(transformers.RemoveInterval(
+            #     valid_data_types=['Phytoplankton'],
+            #     keep_intervals=[
+            #         '0-0'
+            #         '0-5',
+            #         '0-10',
+            #         '0-14',
+            #         '0-20',
+            #         '10-20',
+            #     ],
+            #     keep_if_min_depths_are=['0'],
+            #     replace_value=restrict.DEPTH_REPLACE_VALUE,
+            #     also_remove_from_columns=['sample_id', 'shark_sample_id', 'shark_sample_id_md5'],
+            #     data_filter=dfilter,
+            # ))
+            #
+            # self._restricted_transformers.append(transformers.RemoveInterval(
+            #     valid_data_types=['Zooplankton'],
+            #     keep_intervals=[
+            #         '0-25',
+            #         '0-30',
+            #         '30-60',
+            #         '0-35',
+            #     ],
+            #     keep_if_min_depths_are=['0'],
+            #     replace_value=restrict.DEPTH_REPLACE_VALUE,
+            #     also_replace_in_columns=['sampled_volume_l', 'flowmeter_length_m'],
+            #     also_remove_from_columns=['sample_id', 'shark_sample_id_md5'],
+            #     data_filter=dfilter,
+            # ))
 
     def _run_transformers(self) -> None:
         for trans in self._transformers:
