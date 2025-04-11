@@ -32,6 +32,7 @@ class ArchivePublisher(Trigger):
         self._zip_archive_paths: list[pathlib.Path] = []
         self._transformers: list[transformers.PolarsTransformer] = []
         self._restricted_transformers: list[transformers.PolarsTransformer] = []
+        self._cleanup_transformers: list[transformers.PolarsTransformer] = []
         self._validators_after: list[validators.Validator] = []
         self._updated_zip_archive_paths: list[pathlib.Path] = []
         self._publish_not_allowed_packs: list[pathlib.Path] = []
@@ -289,18 +290,52 @@ class ArchivePublisher(Trigger):
             transformers.PolarsFixTimeFormat(),
             transformers.PolarsAddReportedDates(),
             transformers.PolarsAddSampleDate(),
+            transformers.PolarsAddStaticInternetAccessInfo(),
+            # transformers.PolarsAddStaticInternetAccessInfo(),
             # transformers.PolarsCreateFakeFullDates(),
             # transformers.PolarsManualSealPathology(),
             # transformers.PolarsManualHarbourPorpoise(),
             # transformers.PolarsAddDatatypePlanktonBarcoding(),
             ]
 
+        self._cleanup_transformers = [
+            transformers.PolarsRemoveColumns(
+                "row_number",
+                "location_ra",
+                "location_rb",
+                "location_rc",
+                "location_rg",
+                "location_rh",
+                "location_ro",
+                "location_r",
+                "location_wb",
+                "location_county",
+                "approved_key",
+                "sample_sweref99tm_x",
+                "sample_sweref99tm_y",
+                "reported_visit_date",
+                "reported_sample_date",
+            ),
+            transformers.PolarsRemoveColumns(
+                "sample_project_name_sv",
+                "sample_orderer_name_sv",
+                "sampling_laboratory_name_sv",
+                "analytical_laboratory_name_sv",
+                "reporting_institute_name_sv",
+            )
+
+
+        ]
+
         self._restricted_transformers = []
         if self.restrict_data:
-            dfilter_approved = data_filter.PolarsDataFilterApprovedData()
-            dfilter_r = data_filter.PolarsDataFilterRestrictArea()
+            # dfilter_approved = data_filter.PolarsDataFilterApprovedData()
+            dfilter_approved_and_outside12nm = data_filter.PolarsDataFilterApprovedAndOutside12nm()
+            dfilter_r = data_filter.PolarsDataFilterRestrictAreaR()
             self._restricted_transformers.extend([
                 transformers.PolarsAddSamplePositionSweref99tm(),
+                transformers.PolarsAddLocationWB(),
+                transformers.PolarsAddLocationCounty(),
                 transformers.PolarsAddLocationRA(),
                 transformers.PolarsAddLocationRB(),
                 transformers.PolarsAddLocationRC(),
@@ -309,7 +344,8 @@ class ArchivePublisher(Trigger):
                 transformers.PolarsAddLocationRO(),
                 transformers.PolarsAddLocationR(),
                 transformers.PolarsAddApprovedKeyColumn(),
-                transformers.PolarsKeepMask(data_filter=dfilter_approved),
+                # transformers.PolarsKeepMask(data_filter=dfilter_approved),
+                transformers.PolarsKeepMask(data_filter=dfilter_approved_and_outside12nm),
                 transformers.PolarsRemoveMask(data_filter=dfilter_r)
             ])
 
@@ -407,7 +443,8 @@ class ArchivePublisher(Trigger):
         if self._package_is_unrestricted(self._controller.dataset_name):
             return
         for trans in self._restricted_transformers:
-            # print(f'{trans=}')
+            self._controller.transform(trans)
+        for trans in self._cleanup_transformers:
             self._controller.transform(trans)
 
     def _run_validators_after(self) -> None:

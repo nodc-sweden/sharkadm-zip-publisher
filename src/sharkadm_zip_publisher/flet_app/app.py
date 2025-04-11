@@ -375,7 +375,7 @@ class ZipArchivePublisherGUI:
 
         # Valid restrict options
         if value == 'UTVTST':
-            self._restrict_data.value = False
+            self._restrict_data.value = True
             self._restrict_data.disabled = True
         elif value == 'UTV':
             self._restrict_data.value = True
