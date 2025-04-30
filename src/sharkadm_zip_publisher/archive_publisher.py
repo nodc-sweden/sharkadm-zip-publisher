@@ -2,7 +2,8 @@ import os
 import pathlib
 import shutil
 
-from sharkadm import transformers, controller, exporters, adm_logger, validators
+from sharkadm import transformers, controller, exporters, adm_logger, validators, \
+    multi_transformers
 from sharkadm import utils as sharkadm_utils
 from sharkadm.data import get_zip_archive_data_holder, get_polars_zip_archive_data_holder
 from sharkadm.utils import data_filter
@@ -68,7 +69,9 @@ class ArchivePublisher(Trigger):
     def _package_is_ok_to_publish(self, data_holder) -> bool:
         if not self.restrict_data:
             return True
-        if data_holder.data_type not in restrict.SKIP_DATA_TYPES:
+        if restrict.ONLY_PUBLISH_DATA_TYPES and data_holder.data_type_internal not in restrict.ONLY_PUBLISH_DATA_TYPES:
+            return False
+        if data_holder.data_type_internal not in restrict.DONT_PUBLISH_DATA_TYPES:
             return True
         if self._package_is_unrestricted(data_holder.zip_archive_path.name):
             return True
@@ -80,7 +83,11 @@ class ArchivePublisher(Trigger):
     def _restrict_data_holder(self, data_holder) -> None:
         if not self.restrict_data:
             return
+        if self._controller.data_holder.data_type_internal in restrict.UNRESTRICTED_DATA_TYPES:
+            return
         if self._package_is_unrestricted(data_holder.zip_archive_path.name):
+            return
+        if data_holder.data_type_internal in restrict.DONT_REMOVE_FOLDERS_FOR_DATA_TYPES:
             return
         data_holder.remove_processed_data_directory()
         data_holder.remove_received_data_directory()
@@ -99,6 +106,7 @@ class ArchivePublisher(Trigger):
             if not self._package_is_ok_to_publish(data_holder):
                 publish_not_allowed.append(f'{path.name} (data type {data_holder.data_type} not allowed)')
                 self._publish_not_allowed_packs.append(path.name)
+                continue
             self._controller.set_data_holder(data_holder)
             self._run_transformers()
             self._run_validators_after()
@@ -109,12 +117,12 @@ class ArchivePublisher(Trigger):
             exporter = exporters.SHARKdataTxtAsGiven(encoding=encoding,
                                                      export_directory=data_holder.unzipped_archive_directory,
                                                      export_file_name=data_holder.unzipped_archive_directory / 'shark_data.txt',
-                                                     exclude_columns=[
+                                                     exclude_columns=(
                                                          'sample_sweref99tm_x',
                                                          'sample_sweref99tm_y',
                                                          'location_wb',
                                                          'location_county',
-                                                     ])
+                                                     ))
             adm_logger.log_workflow(f'Encoding is {encoding} for package {path}', level=adm_logger.DEBUG)
 
             self._controller.transform(transformers.ConvertFromPolarsToPandas())
@@ -322,6 +330,9 @@ class ArchivePublisher(Trigger):
                 "sampling_laboratory_name_sv",
                 "analytical_laboratory_name_sv",
                 "reporting_institute_name_sv",
+            ),
+            transformers.PolarsRemoveColumns(
+                "sample_project_name_sv",
             )
 
 
@@ -329,25 +340,91 @@ class ArchivePublisher(Trigger):
 
         self._restricted_transformers = []
         if self.restrict_data:
-            # dfilter_approved = data_filter.PolarsDataFilterApprovedData()
-            dfilter_approved_and_outside12nm = data_filter.PolarsDataFilterApprovedAndOutside12nm()
-            dfilter_r = data_filter.PolarsDataFilterRestrictAreaR()
+            location_filter = data_filter.PolarsDataFilterLocation(locations=[
+                'location_rc',
+                'location_rg',
+                'location_ro',
+            ])
+
+            inside_12nm_filter = data_filter.PolarsDataFilterInside12nm()
+            outside_12nm_filter = ~inside_12nm_filter
+
+            approved_filter = data_filter.PolarsDataFilterApprovedData()
+            year_filter = data_filter.PolarsDataFilterYears(years=list(range(2018, 2025)))
+
+            combined_filter = (outside_12nm_filter & year_filter) | (
+                        approved_filter & year_filter)
+
             self._restricted_transformers.extend([
+                transformers.PolarsAddSamplePositionDDAsFloat(nr_decimals=4),
+
                 transformers.PolarsAddSamplePositionSweref99tm(),
                 transformers.PolarsAddLocationWB(),
                 transformers.PolarsAddLocationCounty(),
-                transformers.PolarsAddLocationRA(),
-                transformers.PolarsAddLocationRB(),
                 transformers.PolarsAddLocationRC(),
                 transformers.PolarsAddLocationRG(),
-                transformers.PolarsAddLocationRH(),
                 transformers.PolarsAddLocationRO(),
-                transformers.PolarsAddLocationR(),
                 transformers.PolarsAddApprovedKeyColumn(),
-                # transformers.PolarsKeepMask(data_filter=dfilter_approved),
-                transformers.PolarsKeepMask(data_filter=dfilter_approved_and_outside12nm),
-                transformers.PolarsRemoveMask(data_filter=dfilter_r)
+
+                transformers.PolarsRemoveMask(location_filter),
+                transformers.PolarsKeepMask(combined_filter),
             ])
+
+
+
+
+            # Before 2025-04-30...
+
+
+            # dfilter_approved_and_outside12nm = data_filter.PolarsDataFilterApprovedAndOutside12nm()
+            # dfilter_inside_12nm_and_ok = data_filter.PolarsDataFilterInside12nmAndNotRestricted()
+            # dfilter_r = data_filter.PolarsDataFilterRestrictAreaR()
+            # dfilter_o = data_filter.PolarsDataFilterRestrictAreaO()
+            # self._restricted_transformers.extend([
+            #     transformers.PolarsAddSamplePositionSweref99tm(),
+            #     transformers.PolarsAddApprovedKeyColumn(),
+            #     multi_transformers.LocationRPolars(),
+            #
+            #
+            #     transformers.PolarsRemoveProfiles(data_filter=dfilter_r),
+            #     # transformers.PolarsRemoveMask(data_filter=dfilter_r),
+            #
+            #     transformers.PolarsRemoveValueInColumns(
+            #         *restrict.DEPTH_COLUMNS,
+            #         replace_value=restrict.DEPTH_REPLACE_VALUE,
+            #         data_filter=dfilter_r
+            #     ),
+            #
+            #     transformers.PolarsRemoveValueInRowsForParameters('Cover',
+            #         replace_value='999',
+            #         data_filter=dfilter_r,
+            #     ),
+            #
+            #     transformers.RemoveDeepestDepthAtEachVisit(
+            #             depth_column='sample_depth_m',
+            #             also_remove_from_columns=['sample_id', 'shark_sample_id'],
+            #             replace_value=restrict.DEPTH_REPLACE_VALUE,
+            #             keep_single_depth_at_surface=True,
+            #             data_filter=dfilter_o,
+            #         ),
+
+
+                # transformers.PolarsAddSamplePositionSweref99tm(),
+                # transformers.PolarsAddLocationWB(),
+                # transformers.PolarsAddLocationCounty(),
+                # transformers.PolarsAddLocationRA(),
+                # transformers.PolarsAddLocationRB(),
+                # transformers.PolarsAddLocationRC(),
+                # transformers.PolarsAddLocationRG(),
+                # transformers.PolarsAddLocationRH(),
+                # transformers.PolarsAddLocationRO(),
+                # transformers.PolarsAddLocationR(),
+                # transformers.PolarsAddApprovedKeyColumn(),
+                # # transformers.PolarsKeepMask(data_filter=dfilter_approved),
+                # # transformers.PolarsKeepMask(data_filter=dfilter_approved_and_outside12nm),
+                # transformers.PolarsRemoveMask(data_filter=dfilter_r)
+                # # transformers.PolarsKeepMask(data_filter=dfilter_inside_12nm_and_ok),
+            # ])
 
             # dfilter = data_filter.DataFilterRestrictDepth()
             # self._restricted_transformers.append(transformers.AddSamplePositionDD())
@@ -439,6 +516,8 @@ class ArchivePublisher(Trigger):
         for trans in self._transformers:
             self._controller.transform(trans)
         if not self.restrict_data:
+            return
+        if self._controller.data_holder.data_type_internal in restrict.UNRESTRICTED_DATA_TYPES:
             return
         if self._package_is_unrestricted(self._controller.dataset_name):
             return

@@ -31,7 +31,7 @@ class ArchiveRemover(Trigger):
     def create_remove_file(self):
         if not self._remove_names:
             return
-        with open(self.remove_file_path, 'w') as fid:
+        with open(self.remove_file_path, 'w', encoding='utf8') as fid:
             fid.write('\n'.join(sorted(self._remove_names)))
 
     @property
@@ -90,7 +90,7 @@ class ArchiveRemover(Trigger):
         if not self.remove_file_path.exists():
             return None
         packs = []
-        with open(self.remove_file_path) as fid:
+        with open(self.remove_file_path, encoding='utf8') as fid:
             for line in fid:
                 striped_line = line.strip()
                 if not striped_line:

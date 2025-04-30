@@ -8,13 +8,33 @@ UNRESTRICTED_PACKAGES_PATH = CONFIG_DIR / 'unrestricted_packages.txt'
 
 RESTRICT_DATA = True
 
+DONT_REMOVE_FOLDERS_FOR_DATA_TYPES = [
+    'profile'
+]
 
-SKIP_DATA_TYPES = [
+
+DONT_PUBLISH_DATA_TYPES = [
     # 'epibenthos',
     # 'epibenthos_dropvideo',
     # 'zoobenthos',
-    'profile'
+    # 'profile'
 ]
+UNRESTRICTED_DATA_TYPES = [
+    "greyseal",
+    "harbourseal",
+    "ringedseal",
+    "sealpathology",
+]
+
+ONLY_PUBLISH_DATA_TYPES = [
+    "chlorophyll",
+    "physicalchemical",
+    "phytoplankton",
+    "zoobenthos",
+]
+
+ONLY_PUBLISH_DATA_TYPES.extend(UNRESTRICTED_DATA_TYPES)
+
 
 DEPTH_REPLACE_VALUE = '999'
 COMMENT_REPLACE_VALUE = ''
