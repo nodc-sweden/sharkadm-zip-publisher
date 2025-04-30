@@ -332,7 +332,7 @@ class ArchivePublisher(Trigger):
                 "reporting_institute_name_sv",
             ),
             transformers.PolarsRemoveColumns(
-                "sample_project_name_sv",
+                "approved_key",
             )
 
 
