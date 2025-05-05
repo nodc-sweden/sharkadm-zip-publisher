@@ -301,7 +301,7 @@ class ArchivePublisher(Trigger):
             transformers.PolarsAddStaticInternetAccessInfo(),
             # transformers.PolarsAddStaticInternetAccessInfo(),
             # transformers.PolarsCreateFakeFullDates(),
-            # transformers.PolarsManualSealPathology(),
+            transformers.PolarsManualSealPathology(),
             # transformers.PolarsManualHarbourPorpoise(),
             # transformers.PolarsAddDatatypePlanktonBarcoding(),
             ]
@@ -352,7 +352,7 @@ class ArchivePublisher(Trigger):
             approved_filter = data_filter.PolarsDataFilterApprovedData()
             year_filter = data_filter.PolarsDataFilterYears(years=list(range(2018, 2025)))
 
-            combined_filter = (outside_12nm_filter & year_filter) | (
+            combined_filter = outside_12nm_filter | (
                         approved_filter & year_filter)
 
             self._restricted_transformers.extend([
