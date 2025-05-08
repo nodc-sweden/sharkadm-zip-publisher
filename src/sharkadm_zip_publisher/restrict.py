@@ -3,7 +3,7 @@ from sharkadm import utils
 CONFIG_DIR = utils.get_root_directory() / 'zip_archive_publisher' / 'config'
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
-UNRESTRICTED_PACKAGES_PATH = CONFIG_DIR / 'unrestricted_packages.txt'
+UNRESTRICTED_PACKAGES_PATH = CONFIG_DIR / 'unrestricted_packages.txt'  # Is not valid at the moment
 
 
 RESTRICT_DATA = True
@@ -20,17 +20,20 @@ DONT_PUBLISH_DATA_TYPES = [
     # 'profile'
 ]
 UNRESTRICTED_DATA_TYPES = [
-    "greyseal",
-    "harbourseal",
-    "ringedseal",
-    "sealpathology",
+    # "greyseal",
+    # "harbourseal",
+    # "ringedseal",
+    # "sealpathology",
 ]
 
+# ONLY_PUBLISH_DATA_TYPES = [
+#     "chlorophyll",
+#     "physicalchemical",
+#     "phytoplankton",
+#     "zoobenthos",
+# ]
 ONLY_PUBLISH_DATA_TYPES = [
-    "chlorophyll",
-    "physicalchemical",
-    "phytoplankton",
-    "zoobenthos",
+    "profile",
 ]
 
 ONLY_PUBLISH_DATA_TYPES.extend(UNRESTRICTED_DATA_TYPES)

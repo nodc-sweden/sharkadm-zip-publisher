@@ -22,7 +22,7 @@ class PageLog(ft.UserControl):
     def _open_log_directory(self, *args):
         if not utils.LOG_DIRECTORY.exists():
             return
-        sharkadm_utils.open_directory(utils.LOG_DIRECTORY)
+        sharkadm_utils.open_file_or_directory(utils.LOG_DIRECTORY)
 
     def clear_text(self) -> None:
         self.lv.controls = []

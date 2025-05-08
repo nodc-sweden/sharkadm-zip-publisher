@@ -340,20 +340,49 @@ class ArchivePublisher(Trigger):
 
         self._restricted_transformers = []
         if self.restrict_data:
-            location_filter = data_filter.PolarsDataFilterLocation(locations=[
-                'location_rc',
-                'location_rg',
-                'location_ro',
-            ])
+            ##############################################################################
+            ##############################################################################
+            ##############################################################################
+            # prod
+            ##############################################################################
+            # location_filter = data_filter.PolarsDataFilterLocation(locations=[
+            #     'location_rc',
+            #     'location_rg',
+            #     'location_ro',
+            # ])
+            #
+            # inside_12nm_filter = data_filter.PolarsDataFilterInside12nm()
+            # outside_12nm_filter = ~inside_12nm_filter
+            #
+            # approved_filter = data_filter.PolarsDataFilterApprovedData()
+            # year_filter = data_filter.PolarsDataFilterYears(years=list(range(2018, 2025)))
+            #
+            # combined_filter = outside_12nm_filter | (
+            #             approved_filter & year_filter)
+            #
+            # self._restricted_transformers.extend([
+            #     transformers.PolarsAddSamplePositionDDAsFloat(nr_decimals=4),
+            #
+            #     transformers.PolarsAddSamplePositionSweref99tm(),
+            #     transformers.PolarsAddLocationWB(),
+            #     transformers.PolarsAddLocationCounty(),
+            #     transformers.PolarsAddLocationRC(),
+            #     transformers.PolarsAddLocationRG(),
+            #     transformers.PolarsAddLocationRO(),
+            #     transformers.PolarsAddApprovedKeyColumn(),
+            #
+            #     transformers.PolarsRemoveMask(location_filter),
+            #     transformers.PolarsKeepMask(combined_filter),
+            # ])
+
+            ##############################################################################
+            ##############################################################################
+            ##############################################################################
+            # profile
+            ##############################################################################
+
 
             inside_12nm_filter = data_filter.PolarsDataFilterInside12nm()
-            outside_12nm_filter = ~inside_12nm_filter
-
-            approved_filter = data_filter.PolarsDataFilterApprovedData()
-            year_filter = data_filter.PolarsDataFilterYears(years=list(range(2018, 2025)))
-
-            combined_filter = outside_12nm_filter | (
-                        approved_filter & year_filter)
 
             self._restricted_transformers.extend([
                 transformers.PolarsAddSamplePositionDDAsFloat(nr_decimals=4),
@@ -361,15 +390,15 @@ class ArchivePublisher(Trigger):
                 transformers.PolarsAddSamplePositionSweref99tm(),
                 transformers.PolarsAddLocationWB(),
                 transformers.PolarsAddLocationCounty(),
-                transformers.PolarsAddLocationRC(),
-                transformers.PolarsAddLocationRG(),
-                transformers.PolarsAddLocationRO(),
-                transformers.PolarsAddApprovedKeyColumn(),
 
-                transformers.PolarsRemoveMask(location_filter),
-                transformers.PolarsKeepMask(combined_filter),
+                transformers.PolarsRemoveProfiles(data_filter=inside_12nm_filter),
+                transformers.PolarsRemoveMask(inside_12nm_filter),
+
             ])
 
+            ##############################################################################
+            ##############################################################################
+            ##############################################################################
 
 
 
