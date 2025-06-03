@@ -283,17 +283,17 @@ class ZipArchivePublisherGUI:
     def _open_datasets_directory(self, event=None):
         if not self.datasets_directory:
             return
-        sharkadm_utils.open_directory(self.datasets_directory)
+        sharkadm_utils.open_file_or_directory(self.datasets_directory)
 
     def _open_zip_directory(self, event=None):
         if not self.zip_directory:
             return
-        sharkadm_utils.open_directory(self.zip_directory)
+        sharkadm_utils.open_file_or_directory(self.zip_directory)
 
     def _open_config_directory(self, event=None):
         if not self.config_directory:
             return
-        sharkadm_utils.open_directory(self.config_directory)
+        sharkadm_utils.open_file_or_directory(self.config_directory)
 
     def _get_option_column(self) -> ft.Column:
         dd_options = [ft.dropdown.Option(value) for value in publisher_saves.selectable_envs]
@@ -375,7 +375,7 @@ class ZipArchivePublisherGUI:
 
         # Valid restrict options
         if value == 'UTVTST':
-            self._restrict_data.value = False
+            self._restrict_data.value = True
             self._restrict_data.disabled = True
         elif value == 'UTV':
             self._restrict_data.value = True
@@ -386,6 +386,9 @@ class ZipArchivePublisherGUI:
         else:
             self._restrict_data.value = True
             self._restrict_data.disabled = False
+        # Override
+        self._restrict_data.value = False
+        self._restrict_data.disabled = True
         self._restrict_data.update()
 
         self._static_variable_paths_column.update()
