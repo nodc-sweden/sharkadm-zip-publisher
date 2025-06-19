@@ -89,6 +89,14 @@ class ZipArchivePublisherGUI:
 
         self._info_text = ft.Text(bgcolor='gray')
 
+        self._progress_text = ft.Text()
+        self._progress_bar = ft.ProgressBar(width=400, value=0)
+
+        progress_row = ft.Row([
+            self._progress_bar,
+            self._progress_text,
+        ])
+
         self.page_add_archive = PageAddArchive(self)
         self.page_remove_archive = PageRemoveArchive(self)
         self.page_config = PageConfig(self)
@@ -139,7 +147,26 @@ class ZipArchivePublisherGUI:
         self.page.controls.append(ft.Divider(height=9, thickness=3, color=COLOR_DATASETS_MAIN))
         self.page.controls.append(self._tabs)
         self.page.controls.append(self._info_text)
+        self.page.controls.append(progress_row)
         self.update_page()
+
+    def update_progress(self, data: dict) -> None:
+        current = data.get('current', 1)
+        total = data.get('total', 1)
+        if current > total:
+            current = total
+
+        msg = data.get('msg') or f'{data.get("title", "")} ({current} / {total})'
+        self._progress_text.value = msg
+        self._progress_bar.value = int(10 * current / total) / 10
+        self._progress_text.update()
+        self._progress_bar.update()
+
+    def reset_progress(self):
+        self._progress_text.value = ""
+        self._progress_bar.value = 0
+        self._progress_text.update()
+        self._progress_bar.update()
 
     def _get_paths_row(self) -> ft.Row:
 
@@ -375,10 +402,12 @@ class ZipArchivePublisherGUI:
             self._static_variable_paths_column.visible = False
             self._dynamic_variable_paths_column.visible = True
             self._trigger_btn.disabled = True
+            self._check_status_btn.disabled = True
         else:
             self._static_variable_paths_column.visible = True
             self._dynamic_variable_paths_column.visible = False
             self._trigger_btn.disabled = False
+            self._check_status_btn.disabled = False
 
         # Valid restrict options
         if value == 'UTVTST':
@@ -401,6 +430,7 @@ class ZipArchivePublisherGUI:
         self._static_variable_paths_column.update()
         self._dynamic_variable_paths_column.update()
         self._trigger_btn.update()
+        self._check_status_btn.update()
 
         publisher_saves.set_env(value)
         publisher_saves.import_saves(self)

@@ -300,6 +300,15 @@ class PageAddArchive(ft.Row):
             for nr, path in enumerate(sorted(self._zip_paths)):
                 if not self._run:
                     break
+                self.main_app.update_progress(
+                    dict(
+                        title=f"Arbetar med paket {pathlib.Path(path).name}",
+                        current=nr + 1,
+                        total=tot_nr
+                    )
+                )
+                import time
+                time.sleep(2)
                 if not nr % 20:
                     sharkadm_utils.clear_all_in_temp_directory()
                 p_not_allowed = self._do_publish_stuff(publisher, path)
@@ -318,6 +327,7 @@ class PageAddArchive(ft.Row):
             self._enable_buttons()
             raise
         finally:
+            self.main_app.reset_progress()
             self._enable_buttons()
 
     def _create_reports(self) -> None:
