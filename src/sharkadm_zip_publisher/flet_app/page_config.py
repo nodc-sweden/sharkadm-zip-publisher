@@ -6,7 +6,7 @@ from sharkadm_zip_publisher.flet_app.constants import COLOR_CONFIG_MAIN, COLOR_D
 from sharkadm_zip_publisher.flet_app.saves import publisher_saves
 
 
-class PageConfig(ft.UserControl):
+class PageConfig(ft.Row):
 
     def __init__(self, main_app):
         super().__init__()

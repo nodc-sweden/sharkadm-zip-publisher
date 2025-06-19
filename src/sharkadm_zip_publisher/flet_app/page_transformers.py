@@ -5,7 +5,7 @@ from sharkadm_zip_publisher.flet_app import utils
 from sharkadm import utils as sharkadm_utils
 
 
-class PageTransformers(ft.UserControl):
+class PageTransformers(ft.Row):
 
     def __init__(self, main_app):
         super().__init__()

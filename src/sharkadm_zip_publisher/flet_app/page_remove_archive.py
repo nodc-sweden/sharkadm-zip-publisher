@@ -8,7 +8,7 @@ from sharkadm_zip_publisher.flet_app.saves import publisher_saves
 from sharkadm_zip_publisher.zip import ZipPath
 
 
-class PageRemoveArchive(ft.UserControl):
+class PageRemoveArchive(ft.Row):
 
     def __init__(self, main_app):
         super().__init__()
