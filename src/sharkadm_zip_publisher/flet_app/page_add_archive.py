@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from sharkadm_zip_publisher.flet_app.app import ZipArchivePublisherGUI
 
 
-class PageAddArchive(ft.UserControl):
+class PageAddArchive(ft.Row):
 
     def __init__(self, main_app: 'ZipArchivePublisherGUI'):
         super().__init__()
