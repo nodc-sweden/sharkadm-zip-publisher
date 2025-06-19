@@ -134,6 +134,8 @@ class ZipArchivePublisherGUI:
             self._get_option_column(),
             self._get_paths_row(),
         ]))
+        self.page.controls.append(self._get_api_buttons_row())
+
         self.page.controls.append(ft.Divider(height=9, thickness=3, color=COLOR_DATASETS_MAIN))
         self.page.controls.append(self._tabs)
         self.page.controls.append(self._info_text)
@@ -308,14 +310,19 @@ class ZipArchivePublisherGUI:
         self._restrict_data = ft.Checkbox(label='Begränsa djupdata', value=False)
         self._restrict_data.disabled = True
 
-        self._trigger_btn = ft.ElevatedButton(text='Trigga import', on_click=self.trigger_import, bgcolor='green')
-
         return ft.Column([
             self._get_import_config_button(),
             self._env_dropdown,
             self._restrict_data,
-            self._trigger_btn
         ])
+
+    def _get_api_buttons_row(self) -> ft.Row:
+        self._trigger_btn = ft.ElevatedButton(text='Trigga import',
+                                              on_click=self.trigger_import,
+                                              bgcolor='green')
+        self._check_status_btn = ft.ElevatedButton(text='Kolla API status',
+                                                   on_click=self._check_status)
+        return ft.Row([self._trigger_btn, self._check_status_btn])
 
     def _get_import_config_button(self) -> ft.Row:
         pick_config_files_dialog = ft.FilePicker(on_result=self._on_pick_config_files)
@@ -432,6 +439,15 @@ class ZipArchivePublisherGUI:
             self.page.open(self._trigger_dlg)
         else:
             self._trigger_import()
+
+    def _check_status(self, e):
+        print(f"{e=}")
+        trig = Trigger(status_url=self.status_url)
+        if trig.import_status_is_available:
+            msg = f"APIet {self.trigger_url} är tillgängligt!"
+        else:
+            msg = f"STOP: APIet {self.trigger_url} är redan triggat!"
+        self.show_dialog(msg)
 
     def _trigger_import(self, event=None):
         t0 = time.time()

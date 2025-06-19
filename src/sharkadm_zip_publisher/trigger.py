@@ -21,13 +21,13 @@ class Trigger:
         return self._trigger_url
 
     @property
-    def _import_status_is_available(self):
+    def import_status_is_available(self):
         print(f'{requests.get(self.status_url).content.decode()=}')
         if requests.get(self.status_url).content.decode() == 'AVAILABLE':
             return True
         return False
 
     def trigger_import(self):
-        if not self._import_status_is_available:
+        if not self.import_status_is_available:
             raise ImportNotAvailable()
         requests.post(self.trigger_url)
