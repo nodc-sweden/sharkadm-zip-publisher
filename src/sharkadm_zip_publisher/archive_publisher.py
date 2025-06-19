@@ -155,7 +155,7 @@ class ArchivePublisher(Trigger):
 
             self._controller.transform(transformers.ConvertFromPolarsToPandas())
             self._controller.export(exporter)
-            self._restrict_data_holder(data_holder)
+            # self._restrict_data_holder(data_holder)
 
             rezipped_archive_path = self._zip_directory(data_holder.unzipped_archive_directory)
             self._updated_zip_archive_paths.append(pathlib.Path(rezipped_archive_path))

@@ -305,7 +305,7 @@ class ZipArchivePublisherGUI:
 
         self._env_dropdown.value = 'TEST'
 
-        self._restrict_data = ft.Checkbox(label='Begränsa djupdata', value=True)
+        self._restrict_data = ft.Checkbox(label='Begränsa djupdata', value=False)
         self._restrict_data.disabled = True
 
         self._trigger_btn = ft.ElevatedButton(text='Trigga import', on_click=self.trigger_import, bgcolor='green')

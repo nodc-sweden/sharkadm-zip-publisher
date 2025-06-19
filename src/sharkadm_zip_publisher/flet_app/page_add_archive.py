@@ -172,7 +172,8 @@ class PageAddArchive(ft.UserControl):
             self._disable_buttons()
             publisher_saves.export_saves()
 
-            sharkadm_utils.clear_temp_directory()
+            # sharkadm_utils.clear_temp_directory()
+            sharkadm_utils.clear_all_in_temp_directory()
 
             publisher = ArchivePublisher(
                 sharkdata_dataset_directory=self.main_app.datasets_directory,
@@ -254,26 +255,29 @@ class PageAddArchive(ft.UserControl):
         for nr, path in enumerate(sorted(self._zip_paths)):
             if not self._run:
                 break
+            if not nr % 20:
+                sharkadm_utils.clear_all_in_temp_directory()
             p = pathlib.Path(path)
             try:
                 p_not_allowed = self._do_publish_stuff(publisher, path)
                 publish_not_allowed.update(p_not_allowed)
             except sharkadm_exceptions.SHARKadmException as e:
                 failing_zips.append(f'{p.name} -> {e}')
+                raise
             except Exception as e:
                 failing_zips.append(f'{p.name} -> {e}')
                 self.main_app.log_workflow(dict(
                     level='warning', msg=f'FEL I PAKET (ej hanterat av SHARKadm) {pathlib.Path(path).name}: {e}'
                 ))
+                raise
             finally:
-                self._enable_buttons()
-                self._reset_abort_button()
+                pass
         self._trigger_and_copy()
         self._create_reports()
         self._enable_buttons()
         self._log_publish_not_allowed(publish_not_allowed)
         if not self._run:
-            sharkadm_utils.clear_all_in_temp_directory()
+            # sharkadm_utils.clear_all_in_temp_directory()
             self.main_app.show_dialog(f'Körningen avbruten av användaren ({nr} av {tot_nr} körda)!')
         elif failing_zips:
             start_text = '1 felaktigt paket.'
@@ -296,6 +300,8 @@ class PageAddArchive(ft.UserControl):
             for nr, path in enumerate(sorted(self._zip_paths)):
                 if not self._run:
                     break
+                if not nr % 20:
+                    sharkadm_utils.clear_all_in_temp_directory()
                 p_not_allowed = self._do_publish_stuff(publisher, path)
                 publish_not_allowed.update(p_not_allowed)
             self._trigger_and_copy()
@@ -313,7 +319,6 @@ class PageAddArchive(ft.UserControl):
             raise
         finally:
             self._enable_buttons()
-            self._reset_abort_button()
 
     def _create_reports(self) -> None:
         create_xlsx_report(adm_logger.reset_filter(), export_directory=utils.LOG_DIRECTORY)
